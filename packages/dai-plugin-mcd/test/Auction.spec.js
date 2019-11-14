@@ -1,8 +1,8 @@
-import {ServiceRoles} from '../src/constants';
+import { ServiceRoles } from '../src/constants';
 
-import {mcdMaker} from './helpers';
+import { mcdMaker } from './helpers';
 
-const scenarios = [ [ 'ETH-A' ], [ 'MDAI' ], [ 'MKR' ] ];
+const scenarios = [['ETH-A'], ['MDAI'], ['MKR']];
 
 /*
   The following arrays are expected values for each tested
@@ -10,9 +10,9 @@ const scenarios = [ [ 'ETH-A' ], [ 'MDAI' ], [ 'MKR' ] ];
   [max bid lifetime, min bid increase]
 */
 const systemData = {
-  'ETH-A' : [ 1, 0.01 ],
-  MDAI : [ 3, 0.05 ],
-  MKR : [ 3, 0.05 ]
+  'ETH-A': [1, 0.01],
+  MDAI: [3, 0.05],
+  MKR: [3, 0.05]
 };
 
 describe.each(scenarios)('%s', ilk => {

@@ -3,7 +3,7 @@ import Container from './Container';
 import standardizeConfig from './standardizeConfig';
 
 export default class ServiceProvider {
-  constructor(config, {services = {}, defaults = {}, disabled = {}} = {}) {
+  constructor(config, { services = {}, defaults = {}, disabled = {} } = {}) {
     this._config = config;
 
     // all the service classes that this provider should support
@@ -11,14 +11,16 @@ export default class ServiceProvider {
 
     // the services (as string names) that should be used for each role by
     // default, or when that role is disabled
-    this._resolver = {defaults, disabled};
+    this._resolver = { defaults, disabled };
   }
 
   /**
    * @param {string} serviceName
    * @returns {boolean}
    */
-  supports(serviceName) { return !!this._services[serviceName]; }
+  supports(serviceName) {
+    return !!this._services[serviceName];
+  }
 
   /**
    * @param {object} servicesConfig
@@ -28,8 +30,11 @@ export default class ServiceProvider {
     const container = new Container();
 
     for (let role in this._config) {
-      const [service, settings] =
-          standardizeConfig(role, this._config[role], this._resolver);
+      const [service, settings] = standardizeConfig(
+        role,
+        this._config[role],
+        this._resolver
+      );
 
       let instance;
 
@@ -44,7 +49,8 @@ export default class ServiceProvider {
         // string
         if (!this.supports(service) && role === 'exchange') {
           throw new Error(
-              'This service has been extracted from dai.js. Please refer to the documentation to add it as a plugin: \n\n https://github.com/makerdao/dai.js/wiki/Basic-Usage-(Plugins)');
+            'This service has been extracted from dai.js. Please refer to the documentation to add it as a plugin: \n\n https://github.com/makerdao/dai.js/wiki/Basic-Usage-(Plugins)'
+          );
         }
         if (!this.supports(service)) {
           throw new Error('Unsupported service in configuration: ' + service);
@@ -80,16 +86,13 @@ export default class ServiceProvider {
 
     // filter out the ones that are already registered
     const newDeps = allDeps.filter(name => !names.includes(name));
-    if (newDeps.length === 0)
-      return;
+    if (newDeps.length === 0) return;
 
     // register any remaining ones
     for (let name of newDeps) {
       let ctor = this._resolver.defaults[name];
-      if (typeof ctor === 'string')
-        ctor = this._services[ctor];
-      if (!ctor)
-        throw new Error(`No service found for "${name}"`);
+      if (typeof ctor === 'string') ctor = this._services[ctor];
+      if (!ctor) throw new Error(`No service found for "${name}"`);
       container.register(new ctor(), name);
     }
 
@@ -98,8 +101,7 @@ export default class ServiceProvider {
   }
 
   service(name) {
-    if (!this._container)
-      this.buildContainer();
+    if (!this._container) this.buildContainer();
     return this._container.service(name);
   }
 }

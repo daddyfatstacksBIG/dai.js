@@ -1,13 +1,16 @@
 import assert from 'assert';
 
-import {ServiceRoles} from './constants';
-import {ETH, MDAI, MWETH} from './index';
+import { ServiceRoles } from './constants';
+import { ETH, MDAI, MWETH } from './index';
 import * as math from './math';
-import {stringToBytes} from './utils';
+import { stringToBytes } from './utils';
 
 export default class CdpType {
-  constructor(cdpTypeService, {currency, ilk, decimals},
-              options = {prefetch : true}) {
+  constructor(
+    cdpTypeService,
+    { currency, ilk, decimals },
+    options = { prefetch: true }
+  ) {
     assert(currency && ilk, 'currency and ilk are required');
     this._cdpTypeService = cdpTypeService;
     this._systemData = cdpTypeService.get(ServiceRoles.SYSTEM_DATA);
@@ -17,8 +20,7 @@ export default class CdpType {
     this.ilk = ilk;
     this._ilkBytes = stringToBytes(this.ilk);
     this.cache = {};
-    if (options.prefetch)
-      this.prefetch();
+    if (options.prefetch) this.prefetch();
   }
 
   get totalCollateral() {
@@ -26,8 +28,10 @@ export default class CdpType {
   }
 
   get totalDebt() {
-    const {Art, rate} = this._getCached('vatInfo');
-    return MDAI.wei(Art).times(rate).shiftedBy(-27);
+    const { Art, rate } = this._getCached('vatInfo');
+    return MDAI.wei(Art)
+      .times(rate)
+      .shiftedBy(-27);
   }
 
   get debtCeiling() {
@@ -39,8 +43,12 @@ export default class CdpType {
   }
 
   get price() {
-    return math.price(this.currency, this._getCached('par'),
-                      this._getCached('vatInfo').spot, this.liquidationRatio);
+    return math.price(
+      this.currency,
+      this._getCached('par'),
+      this._getCached('vatInfo').spot,
+      this.liquidationRatio
+    );
   }
 
   get liquidationPenalty() {
@@ -52,17 +60,20 @@ export default class CdpType {
   }
 
   async getPriceHistory(num = 100) {
-    const prices = await this._cdpTypeService.get(ServiceRoles.QUERY_API)
-                       .getPriceHistoryForPip(this._pipAddress, num);
-    return Promise.all(prices.map(async e => {
-      const price = this.currency.wei(e.val);
-      // todo: update this query to read the datetime directly from vdb once vdb
-      // is updated with that functionality
-      const timestamp =
-          (await this._web3Service.getBlock(e.blockNumber)).timestamp;
-      const time = new Date(1000 * timestamp);
-      return {price, time};
-    }));
+    const prices = await this._cdpTypeService
+      .get(ServiceRoles.QUERY_API)
+      .getPriceHistoryForPip(this._pipAddress, num);
+    return Promise.all(
+      prices.map(async e => {
+        const price = this.currency.wei(e.val);
+        // todo: update this query to read the datetime directly from vdb once vdb
+        // is updated with that functionality
+        const timestamp = (await this._web3Service.getBlock(e.blockNumber))
+          .timestamp;
+        const time = new Date(1000 * timestamp);
+        return { price, time };
+      })
+    );
   }
 
   async ilkInfo(contract = 'vat') {
@@ -79,13 +90,14 @@ export default class CdpType {
     // separate calls
     if (!this._prefetchPromise) {
       const adapterAddress = this._systemData.adapterAddress(this.ilk);
-      const {symbol} = this.currency === ETH ? MWETH : this.currency;
+      const { symbol } = this.currency === ETH ? MWETH : this.currency;
 
       this._prefetchPromise = Promise.all([
-        this._systemData.get('token')
-            .getToken(symbol)
-            .balanceOf(adapterAddress)
-            .then(x => (this.cache.adapterBalance = x)),
+        this._systemData
+          .get('token')
+          .getToken(symbol)
+          .balanceOf(adapterAddress)
+          .then(x => (this.cache.adapterBalance = x)),
         this.ilkInfo().then(x => (this.cache.vatInfo = x)),
         this.ilkInfo('cat').then(x => (this.cache.catInfo = x)),
         this.ilkInfo('jug').then(x => (this.cache.jugInfo = x)),

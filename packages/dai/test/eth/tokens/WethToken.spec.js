@@ -1,8 +1,7 @@
-import TestAccountProvider from
-    '@makerdao/test-helpers/src/TestAccountProvider';
+import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
 
-import {WETH} from '../../../src/eth/Currency';
-import {buildTestEthereumTokenService} from '../../helpers/serviceBuilders';
+import { WETH } from '../../../src/eth/Currency';
+import { buildTestEthereumTokenService } from '../../helpers/serviceBuilders';
 
 let tokenService, weth;
 
@@ -13,8 +12,10 @@ beforeAll(async () => {
 });
 
 test('get WETH allowance of address', async () => {
-  const allowance = await weth.allowance(TestAccountProvider.nextAddress(),
-                                         TestAccountProvider.nextAddress());
+  const allowance = await weth.allowance(
+    TestAccountProvider.nextAddress(),
+    TestAccountProvider.nextAddress()
+  );
   expect(allowance).toEqual(WETH(0));
 });
 

@@ -1,6 +1,6 @@
 import tokens from '../../contracts/tokens';
-import {MKR} from '../../src/eth/Currency';
-import {buildTestEthereumTokenService} from '../helpers/serviceBuilders';
+import { MKR } from '../../src/eth/Currency';
+import { buildTestEthereumTokenService } from '../helpers/serviceBuilders';
 
 let ethereumTokenService;
 
@@ -17,18 +17,21 @@ test('getTokens returns tokens', () => {
 
 test('getToken returns token object of correct version', () => {
   expect(
-      ethereumTokenService.getToken(tokens.MKR)._contract.address.toUpperCase())
-      .toBe(ethereumTokenService.getToken(tokens.MKR, 2)
-                ._contract.address.toUpperCase());
+    ethereumTokenService.getToken(tokens.MKR)._contract.address.toUpperCase()
+  ).toBe(
+    ethereumTokenService.getToken(tokens.MKR, 2)._contract.address.toUpperCase()
+  );
 
   expect(
-      ethereumTokenService.getToken(tokens.MKR)._contract.address.toUpperCase())
-      .not.toBe(ethereumTokenService.getToken(tokens.MKR, 1)
-                    ._contract.address.toUpperCase());
+    ethereumTokenService.getToken(tokens.MKR)._contract.address.toUpperCase()
+  ).not.toBe(
+    ethereumTokenService.getToken(tokens.MKR, 1)._contract.address.toUpperCase()
+  );
 });
 
-test('getToken throws when given unknown token symbol',
-     () => { expect(() => ethereumTokenService.getToken('XYZ')).toThrow(); });
+test('getToken throws when given unknown token symbol', () => {
+  expect(() => ethereumTokenService.getToken('XYZ')).toThrow();
+});
 
 test('getToken works with Currency', () => {
   const token = ethereumTokenService.getToken(MKR);
@@ -36,9 +39,10 @@ test('getToken works with Currency', () => {
 });
 
 test('_getTokenInfo returns token address for current network', () => {
-  ethereumTokenService._addedTokens.FOO =
-      [ {address : {testnet : '0xtest', kovan : '0xkovan'}} ];
+  ethereumTokenService._addedTokens.FOO = [
+    { address: { testnet: '0xtest', kovan: '0xkovan' } }
+  ];
 
   const tokenInfo = ethereumTokenService._getTokenInfo('FOO');
-  expect(tokenInfo).toEqual({address : '0xtest'});
+  expect(tokenInfo).toEqual({ address: '0xtest' });
 });

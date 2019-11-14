@@ -1,7 +1,7 @@
-import {restoreSnapshot, takeSnapshot} from '@makerdao/test-helpers';
+import { restoreSnapshot, takeSnapshot } from '@makerdao/test-helpers';
 
-import {Migrations, ServiceRoles} from '../../src/constants';
-import {migrationMaker} from '../helpers';
+import { Migrations, ServiceRoles } from '../../src/constants';
+import { migrationMaker } from '../helpers';
 
 let maker, migration, snapshot;
 
@@ -13,10 +13,15 @@ describe('SDai to MDai Migration', () => {
     snapshot = await takeSnapshot(maker);
   });
 
-  afterAll(async () => { restoreSnapshot(snapshot, maker); });
+  afterAll(async () => {
+    restoreSnapshot(snapshot, maker);
+  });
 
   test('if the account has no SDAI, return 0', async () => {
-    const amount = await maker.service('token').getToken('DAI').balance();
+    const amount = await maker
+      .service('token')
+      .getToken('DAI')
+      .balance();
     expect(amount.toNumber()).toBe(0);
 
     expect((await migration.check()).eq(0)).toBeTruthy();
@@ -26,7 +31,10 @@ describe('SDai to MDai Migration', () => {
     const proxy = await maker.service('proxy').ensureProxy();
     await maker.service('cdp').openProxyCdpLockEthAndDrawDai(0.1, 1, proxy);
 
-    const amount = await maker.service('token').getToken('DAI').balance();
+    const amount = await maker
+      .service('token')
+      .getToken('DAI')
+      .balance();
     expect(amount.toNumber()).toBe(1);
 
     expect((await migration.check()).eq(1)).toBeTruthy();
@@ -37,18 +45,24 @@ describe('SDai to MDai Migration', () => {
     const proxy = await maker.service('proxy').ensureProxy();
     await maker.service('cdp').openProxyCdpLockEthAndDrawDai(0.1, 1, proxy);
     const saiBalanceBeforeMigration = await migration._sai.balanceOf(address);
-    const daiBalanceBeforeMigration =
-        await maker.service('token').getToken('MDAI').balanceOf(address);
+    const daiBalanceBeforeMigration = await maker
+      .service('token')
+      .getToken('MDAI')
+      .balanceOf(address);
 
     await migration.execute(1);
 
     const saiBalanceAfterMigration = await migration._sai.balanceOf(address);
-    const daiBalanceAfterMigration =
-        await maker.service('token').getToken('MDAI').balanceOf(address);
+    const daiBalanceAfterMigration = await maker
+      .service('token')
+      .getToken('MDAI')
+      .balanceOf(address);
 
-    expect(saiBalanceBeforeMigration.toNumber())
-        .toEqual(saiBalanceAfterMigration.toNumber() + 1);
-    expect(daiBalanceBeforeMigration.toNumber())
-        .toEqual(daiBalanceAfterMigration.toNumber() - 1);
+    expect(saiBalanceBeforeMigration.toNumber()).toEqual(
+      saiBalanceAfterMigration.toNumber() + 1
+    );
+    expect(daiBalanceBeforeMigration.toNumber()).toEqual(
+      daiBalanceAfterMigration.toNumber() - 1
+    );
   });
 });

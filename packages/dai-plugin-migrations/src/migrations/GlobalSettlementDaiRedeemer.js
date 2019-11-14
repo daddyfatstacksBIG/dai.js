@@ -1,4 +1,4 @@
-import {MDAI_1} from '../index';
+import { MDAI_1 } from '../index';
 
 export default class GlobalSettlementDaiRedeemer {
   constructor(container) {
@@ -10,25 +10,30 @@ export default class GlobalSettlementDaiRedeemer {
     const smartContract = this._container.get('smartContract');
     const end = smartContract.getContract('MCD_END_1');
     const isInGlobalSettlement = !(await end.live());
-    if (!isInGlobalSettlement)
-      return false;
+    if (!isInGlobalSettlement) return false;
 
-    const address = (await this._container.get('proxy').currentProxy()) ||
-                    this._container.get('accounts').currentAddress();
+    const address =
+      (await this._container.get('proxy').currentProxy()) ||
+      this._container.get('accounts').currentAddress();
 
-    const daiBalance =
-        await this._container.get('token').getToken(MDAI_1).balance();
-    if (daiBalance.lte(0))
-      return false;
+    const daiBalance = await this._container
+      .get('token')
+      .getToken(MDAI_1)
+      .balance();
+    if (daiBalance.lte(0)) return false;
 
     const cdpManagerAddress = smartContract.getContractAddress('CDP_MANAGER_1');
 
-    const [, , ilks] = await smartContract.getContract('GET_CDPS_1')
-                           .getCdpsDesc(cdpManagerAddress, address);
+    const [, , ilks] = await smartContract
+      .getContract('GET_CDPS_1')
+      .getCdpsDesc(cdpManagerAddress, address);
 
-    const uniqueIlks = [...new Set(ilks) ];
-    const fixes =
-        await Promise.all(uniqueIlks.map(ilk => { return end.fix(ilk); }));
+    const uniqueIlks = [...new Set(ilks)];
+    const fixes = await Promise.all(
+      uniqueIlks.map(ilk => {
+        return end.fix(ilk);
+      })
+    );
 
     return fixes.some(fix => fix.gt(0));
   }

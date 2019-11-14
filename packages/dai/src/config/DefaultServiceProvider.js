@@ -1,4 +1,4 @@
-import {ServiceProvider} from '@makerdao/services-core';
+import { ServiceProvider } from '@makerdao/services-core';
 
 import AccountsService from '../eth/AccountsService';
 import AllowanceService from '../eth/AllowanceService';
@@ -20,29 +20,29 @@ import ConsoleLogger from '../utils/loggers/ConsoleLogger';
 import NullLogger from '../utils/loggers/NullLogger';
 import TimerService from '../utils/TimerService';
 
-import {getSettings} from './index';
+import { getSettings } from './index';
 
 export const resolver = {
-  defaults : {
-    accounts : 'AccountsService',
-    allowance : 'AllowanceService',
-    cache : 'CacheService',
-    cdp : 'EthereumCdpService',
-    conversion : 'TokenConversionService',
-    event : 'EventService',
-    gas : 'GasService',
-    log : 'ConsoleLogger',
-    multicall : 'MulticallService',
-    nonce : 'NonceService',
-    price : 'PriceService',
-    proxy : 'DSProxyService',
-    smartContract : 'SmartContractService',
-    timer : 'TimerService',
-    token : 'EthereumTokenService',
-    transactionManager : 'TransactionManager',
-    web3 : 'Web3Service'
+  defaults: {
+    accounts: 'AccountsService',
+    allowance: 'AllowanceService',
+    cache: 'CacheService',
+    cdp: 'EthereumCdpService',
+    conversion: 'TokenConversionService',
+    event: 'EventService',
+    gas: 'GasService',
+    log: 'ConsoleLogger',
+    multicall: 'MulticallService',
+    nonce: 'NonceService',
+    price: 'PriceService',
+    proxy: 'DSProxyService',
+    smartContract: 'SmartContractService',
+    timer: 'TimerService',
+    token: 'EthereumTokenService',
+    transactionManager: 'TransactionManager',
+    web3: 'Web3Service'
   },
-  disabled : {event : 'NullEventService', log : 'NullLogger'}
+  disabled: { event: 'NullEventService', log: 'NullLogger' }
 };
 
 export default class DefaultServiceProvider extends ServiceProvider {
@@ -50,12 +50,12 @@ export default class DefaultServiceProvider extends ServiceProvider {
     if (config.web3) {
       config = {
         ...config,
-        accounts : {...config.accounts, web3 : getSettings(config.web3)}
+        accounts: { ...config.accounts, web3: getSettings(config.web3) }
       };
     }
 
     super(config, {
-      services : {
+      services: {
         AccountsService,
         AllowanceService,
         CacheService,

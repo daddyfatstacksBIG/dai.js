@@ -1,7 +1,12 @@
-import {createCurrencyRatio} from '@makerdao/currency';
+import { createCurrencyRatio } from '@makerdao/currency';
 import Maker from '@makerdao/dai';
-import McdPlugin, {ETH, GNT, ServiceRoles, USD} from '@makerdao/dai-plugin-mcd';
-import {utils} from 'ethers';
+import McdPlugin, {
+  ETH,
+  GNT,
+  ServiceRoles,
+  USD
+} from '@makerdao/dai-plugin-mcd';
+import { utils } from 'ethers';
 import ethAbi from 'web3-eth-abi';
 
 import MigrationPlugin from '../../src';
@@ -12,13 +17,13 @@ export function stringToBytes(str) {
 
 export function bytesToString(hex) {
   return Buffer.from(hex.replace(/^0x/, ''), 'hex')
-      .toString()
-      .replace(/\x00/g, ''); // eslint-disable-line no-control-regex
+    .toString()
+    .replace(/\x00/g, ''); // eslint-disable-line no-control-regex
 }
 
 export async function setPrice(maker, ratio, ilk) {
   const scs = maker.service('smartContract');
-  const {symbol} = ratio.denominator;
+  const { symbol } = ratio.denominator;
   const pip = scs.getContract('PIP_' + symbol);
 
   // using uint here instead of bytes32 so it gets left-padded
@@ -30,30 +35,35 @@ export async function setPrice(maker, ratio, ilk) {
 export async function setupCollateral(maker, ilk, options = {}) {
   const proxy = await maker.currentProxy();
   const cdpType = maker.service(ServiceRoles.CDP_TYPE).getCdpType(null, ilk);
-  const {currency} = cdpType;
+  const { currency } = cdpType;
 
   // The following currencies don't support `approveUnlimited`
-  const skipApproval = [ ETH, GNT ];
+  const skipApproval = [ETH, GNT];
 
   if (!skipApproval.includes(currency)) {
     await maker.getToken(currency).approveUnlimited(proxy);
   }
   if (options.price)
-    await setPrice(maker, createCurrencyRatio(USD, currency)(options.price),
-                   ilk);
+    await setPrice(
+      maker,
+      createCurrencyRatio(USD, currency)(options.price),
+      ilk
+    );
 }
 
-export async function migrationMaker(
-    {preset = 'test',
-     network = 'testnet',
-     addressOverrides,
-     ...settings} = {}) {
+export async function migrationMaker({
+  preset = 'test',
+  network = 'testnet',
+  addressOverrides,
+  ...settings
+} = {}) {
   const maker = await Maker.create(preset, {
-    plugins : [
-      [ McdPlugin, {network} ], [ MigrationPlugin, {addressOverrides, network} ]
+    plugins: [
+      [McdPlugin, { network }],
+      [MigrationPlugin, { addressOverrides, network }]
     ],
-    log : false,
-    web3 : {pollingInterval : 50},
+    log: false,
+    web3: { pollingInterval: 50 },
     ...settings
   });
   await maker.authenticate();
@@ -63,9 +73,9 @@ export async function migrationMaker(
 export async function placeLimitOrder(migrationService) {
   const daiToken = migrationService.get('token').getToken('DAI');
   const daiAddress = daiToken.address();
-  const oasisAddress = migrationService.get('smartContract')
-                           .getContractByName('MAKER_OTC')
-                           .address;
+  const oasisAddress = migrationService
+    .get('smartContract')
+    .getContractByName('MAKER_OTC').address;
   const mkrToken = migrationService.get('token').getToken('MKR');
   const mkrAddress = mkrToken.address();
   const value = utils.parseEther('10.0');
@@ -73,16 +83,34 @@ export async function placeLimitOrder(migrationService) {
   await mkrToken.approveUnlimited(oasisAddress);
   await daiToken.approveUnlimited(oasisAddress);
 
-  return await offer(migrationService, utils.parseEther('0.5'), mkrAddress,
-                     value, daiAddress, 1);
+  return await offer(
+    migrationService,
+    utils.parseEther('0.5'),
+    mkrAddress,
+    value,
+    daiAddress,
+    1
+  );
 }
 
-async function offer(migrationService, payAmount, payTokenAddress, buyAmount,
-                     buyTokenAddress, position) {
-  const oasisContract =
-      migrationService.get('smartContract').getContractByName('MAKER_OTC');
+async function offer(
+  migrationService,
+  payAmount,
+  payTokenAddress,
+  buyAmount,
+  buyTokenAddress,
+  position
+) {
+  const oasisContract = migrationService
+    .get('smartContract')
+    .getContractByName('MAKER_OTC');
 
-  const tx = await oasisContract.offer(payAmount, payTokenAddress, buyAmount,
-                                       buyTokenAddress, position);
+  const tx = await oasisContract.offer(
+    payAmount,
+    payTokenAddress,
+    buyAmount,
+    buyTokenAddress,
+    position
+  );
   return await tx.mine();
 }

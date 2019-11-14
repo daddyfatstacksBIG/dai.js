@@ -8,11 +8,11 @@ export default class GlobalSettlementSavingsDai {
     const smartContract = this._container.get('smartContract');
     const end = smartContract.getContract('MCD_END_1');
     const isInGlobalSettlement = !(await end.live());
-    if (!isInGlobalSettlement)
-      return false;
+    if (!isInGlobalSettlement) return false;
 
-    const address = (await this._container.get('proxy').currentProxy()) ||
-                    this._container.get('accounts').currentAddress();
+    const address =
+      (await this._container.get('proxy').currentProxy()) ||
+      this._container.get('accounts').currentAddress();
 
     const pot = smartContract.getContract('MCD_POT_1');
     const balance = await pot.pie(address);

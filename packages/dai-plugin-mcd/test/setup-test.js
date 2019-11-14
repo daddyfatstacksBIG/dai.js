@@ -1,9 +1,15 @@
-import {restoreSnapshot, takeSnapshot} from '@makerdao/test-helpers';
+import { restoreSnapshot, takeSnapshot } from '@makerdao/test-helpers';
 
-beforeEach(() => { jest.setTimeout(10000); });
+beforeEach(() => {
+  jest.setTimeout(10000);
+});
 
 let snapshotData;
 
-beforeAll(async () => { snapshotData = await takeSnapshot(); });
+beforeAll(async () => {
+  snapshotData = await takeSnapshot();
+});
 
-afterAll(async () => { await restoreSnapshot(snapshotData); });
+afterAll(async () => {
+  await restoreSnapshot(snapshotData);
+});

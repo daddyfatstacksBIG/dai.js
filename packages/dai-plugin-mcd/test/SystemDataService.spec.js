@@ -1,6 +1,6 @@
-import {ServiceRoles} from '../src/constants';
+import { ServiceRoles } from '../src/constants';
 
-import {mcdMaker} from './helpers';
+import { mcdMaker } from './helpers';
 
 let service;
 let maker;

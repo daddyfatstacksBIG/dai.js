@@ -1,9 +1,8 @@
-import TestAccountProvider from
-    '@makerdao/test-helpers/src/TestAccountProvider';
+import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
 
 import contracts from '../../../contracts/contracts';
-import {PETH, WETH} from '../../../src/eth/Currency';
-import {buildTestEthereumTokenService} from '../../helpers/serviceBuilders';
+import { PETH, WETH } from '../../../src/eth/Currency';
+import { buildTestEthereumTokenService } from '../../helpers/serviceBuilders';
 
 let tokenService, owner, weth, peth;
 
@@ -21,8 +20,10 @@ test('get PETH balance of address', async () => {
 });
 
 test('get PETH allowance of address', async () => {
-  const allowance = await peth.allowance(TestAccountProvider.nextAddress(),
-                                         TestAccountProvider.nextAddress());
+  const allowance = await peth.allowance(
+    TestAccountProvider.nextAddress(),
+    TestAccountProvider.nextAddress()
+  );
   expect(allowance).toEqual(PETH(0));
 });
 

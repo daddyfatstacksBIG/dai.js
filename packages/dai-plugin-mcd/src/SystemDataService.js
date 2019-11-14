@@ -1,17 +1,20 @@
-import {PublicService} from '@makerdao/services-core';
+import { PublicService } from '@makerdao/services-core';
 import BigNumber from 'bignumber.js';
 
-import {RAD, RAY, SECONDS_PER_YEAR, ServiceRoles} from './constants';
+import { RAD, RAY, SECONDS_PER_YEAR, ServiceRoles } from './constants';
 
 export default class SystemDataService extends PublicService {
   constructor(name = ServiceRoles.SYSTEM_DATA) {
-    super(name, [ 'smartContract', 'token' ]);
+    super(name, ['smartContract', 'token']);
   }
 
   async getAnnualBaseRate() {
     const base = await this.jug.base();
     const baseBigNumber = new BigNumber(base.toString()).dividedBy(RAY).plus(1);
-    return baseBigNumber.pow(SECONDS_PER_YEAR).minus(1).toNumber();
+    return baseBigNumber
+      .pow(SECONDS_PER_YEAR)
+      .minus(1)
+      .toNumber();
   }
 
   async getSystemWideDebtCeiling() {
@@ -25,17 +28,27 @@ export default class SystemDataService extends PublicService {
   }
 
   async isGlobalSettlementInvoked() {
-    const live = await this.get('smartContract').getContract('MCD_END').live();
+    const live = await this.get('smartContract')
+      .getContract('MCD_END')
+      .live();
     return live.eq(0);
   }
 
   // Helpers ----------------------------------------------
 
-  get cat() { return this.get('smartContract').getContract('MCD_CAT'); }
+  get cat() {
+    return this.get('smartContract').getContract('MCD_CAT');
+  }
 
-  get jug() { return this.get('smartContract').getContract('MCD_JUG'); }
+  get jug() {
+    return this.get('smartContract').getContract('MCD_JUG');
+  }
 
-  get vat() { return this.get('smartContract').getContract('MCD_VAT'); }
+  get vat() {
+    return this.get('smartContract').getContract('MCD_VAT');
+  }
 
-  get spot() { return this.get('smartContract').getContract('MCD_SPOT'); }
+  get spot() {
+    return this.get('smartContract').getContract('MCD_SPOT');
+  }
 }

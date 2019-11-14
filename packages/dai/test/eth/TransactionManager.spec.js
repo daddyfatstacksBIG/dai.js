@@ -1,9 +1,9 @@
-import {mineBlocks} from '@makerdao/test-helpers';
+import { mineBlocks } from '@makerdao/test-helpers';
 import debug from 'debug';
 import size from 'lodash/size';
 
 import tokens from '../../contracts/tokens';
-import {uniqueId} from '../../src/utils';
+import { uniqueId } from '../../src/utils';
 import {
   buildTestContainer,
   buildTestEthereumCdpService,
@@ -14,35 +14,36 @@ const log = debug('dai:testing:TxMgr.spec');
 
 function buildTestServices() {
   const container = buildTestContainer({
-    smartContract : true,
-    transactionManager : true,
-    web3 : {transactionSettings : {gasLimit : 1234567}}
+    smartContract: true,
+    transactionManager: true,
+    web3: { transactionSettings: { gasLimit: 1234567 } }
   });
   const smartContract = container.service('smartContract');
   const transactionManager = container.service('transactionManager');
 
-  return Promise
-      .all([
-        smartContract.manager().authenticate(),
-        transactionManager.manager().authenticate()
-      ])
-      .then(() => ({
-              contract : smartContract,
-              txMgr : transactionManager,
-              currentAddress : smartContract.get('web3').currentAddress()
-            }));
+  return Promise.all([
+    smartContract.manager().authenticate(),
+    transactionManager.manager().authenticate()
+  ]).then(() => ({
+    contract: smartContract,
+    txMgr: transactionManager,
+    currentAddress: smartContract.get('web3').currentAddress()
+  }));
 }
 
 let services;
 
-beforeEach(async () => { services = await buildTestServices(); });
+beforeEach(async () => {
+  services = await buildTestServices();
+});
 
 test('reuse the same web3 and log service in test services', () => {
   expect(services.contract.manager().isConnected()).toBe(true);
   expect(services.txMgr.manager().isConnected()).toBe(true);
   expect(services.txMgr.get('web3')).toBe(services.contract.get('web3'));
-  expect(services.txMgr.get('log'))
-      .toBe(services.contract.get('web3').get('log'));
+  expect(services.txMgr.get('log')).toBe(
+    services.contract.get('web3').get('log')
+  );
   expect(services.currentAddress).toMatch(/^0x[0-9A-Fa-f]+$/);
 });
 
@@ -50,49 +51,62 @@ test('wrapped contract call accepts a businessObject option', async () => {
   expect.assertions(3);
   const dai = services.contract.getContract(tokens.DAI);
 
-  const businessObject = {a : 1, add : function(b) { return this.a + b; }};
+  const businessObject = {
+    a: 1,
+    add: function(b) {
+      return this.a + b;
+    }
+  };
 
-  const txo = dai.approve(services.currentAddress, '1000000000000000000',
-                          {businessObject});
+  const txo = dai.approve(services.currentAddress, '1000000000000000000', {
+    businessObject
+  });
 
-  services.txMgr.listen(
-      txo, {pending : tx => { expect(tx.isPending()).toBe(true); }});
+  services.txMgr.listen(txo, {
+    pending: tx => {
+      expect(tx.isPending()).toBe(true);
+    }
+  });
   const bob = await txo;
   expect(services.txMgr.isMined(txo)).toBe(true);
   expect(bob.add(10)).toEqual(11);
 });
 
 test('wrapped contract call adds nonce, web3 settings', async () => {
-  const {txMgr, currentAddress, contract} = services;
+  const { txMgr, currentAddress, contract } = services;
   const dai = contract.getContract(tokens.DAI);
   const gasPrice = await txMgr.get('gas').getGasPrice();
   jest.spyOn(txMgr, '_execute');
 
   await dai.approve(currentAddress, 20000);
 
-  expect(txMgr._execute)
-      .toHaveBeenCalledWith(dai.wrappedContract, 'approve',
-                            [ currentAddress, 20000 ], {
-                              gasLimit : 1234567,
-                              nonce : expect.any(Number),
-                              gasPrice : gasPrice
-                            });
+  expect(txMgr._execute).toHaveBeenCalledWith(
+    dai.wrappedContract,
+    'approve',
+    [currentAddress, 20000],
+    {
+      gasLimit: 1234567,
+      nonce: expect.any(Number),
+      gasPrice: gasPrice
+    }
+  );
 });
 
 describe('lifecycle hooks', () => {
   let service, txMgr, priceService, open, cdp;
 
-  const makeListener = (label, state) => jest.fn(tx => {
-    const {contract, method} = tx.metadata;
-    log(`${label}: ${contract}.${method}: ${state}`);
-  });
+  const makeListener = (label, state) =>
+    jest.fn(tx => {
+      const { contract, method } = tx.metadata;
+      log(`${label}: ${contract}.${method}: ${state}`);
+    });
 
   const makeHandlers = label => ({
-    initialized : makeListener(label, 'initialized'),
-    pending : makeListener(label, 'pending'),
-    mined : makeListener(label, 'mined'),
-    confirmed : makeListener(label, 'confirmed'),
-    error : makeListener(label, 'error')
+    initialized: makeListener(label, 'initialized'),
+    pending: makeListener(label, 'pending'),
+    mined: makeListener(label, 'mined'),
+    confirmed: makeListener(label, 'confirmed'),
+    error: makeListener(label, 'error')
   });
 
   beforeAll(async () => {
@@ -118,7 +132,7 @@ describe('lifecycle hooks', () => {
     const openHandlers = makeHandlers('open');
 
     txMgr.listen(open, openHandlers);
-    await Promise.all([ txMgr.confirm(open), mineBlocks(service) ]);
+    await Promise.all([txMgr.confirm(open), mineBlocks(service)]);
     expect(openHandlers.initialized).toBeCalled();
     expect(openHandlers.pending).toBeCalled();
     expect(openHandlers.mined).toBeCalled();
@@ -152,10 +166,10 @@ describe('lifecycle hooks', () => {
 
   test('lifecycle hooks for bite', async () => {
     const lock = cdp.lockEth(0.1);
-    await Promise.all([ lock, mineBlocks(service) ]);
+    await Promise.all([lock, mineBlocks(service)]);
 
     const draw = cdp.drawDai(13);
-    await Promise.all([ txMgr.confirm(draw), mineBlocks(service) ]);
+    await Promise.all([txMgr.confirm(draw), mineBlocks(service)]);
 
     // set price to make cdp unsafe
     await priceService.setEthPrice(0.01);
@@ -172,37 +186,36 @@ describe('lifecycle hooks', () => {
     expect(biteHandlers.mined).toBeCalled();
   });
 
-  test(
-      'clear Tx when state is confirmed/finalized and older than 5 minutes',
-      async () => {
-        const openId = uniqueId(open).toString();
+  test('clear Tx when state is confirmed/finalized and older than 5 minutes', async () => {
+    const openId = uniqueId(open).toString();
 
-        const openHandlers = makeHandlers('open');
-        txMgr.listen(open, openHandlers);
+    const openHandlers = makeHandlers('open');
+    txMgr.listen(open, openHandlers);
 
-        // Subtract 10 minutes from the Tx timestamp
-        const myTx = txMgr._tracker.get(openId);
-        const minedDate = new Date(myTx._timeStampMined);
-        myTx._timeStampMined = new Date(minedDate.getTime() - 600000);
+    // Subtract 10 minutes from the Tx timestamp
+    const myTx = txMgr._tracker.get(openId);
+    const minedDate = new Date(myTx._timeStampMined);
+    myTx._timeStampMined = new Date(minedDate.getTime() - 600000);
 
-        expect(txMgr._tracker._transactions).toHaveProperty(openId);
+    expect(txMgr._tracker._transactions).toHaveProperty(openId);
 
-        // after calling confirm, Tx state will become 'finalized' and be
-        // deleted from list.
-        await Promise.all([ txMgr.confirm(open), mineBlocks(service) ]);
+    // after calling confirm, Tx state will become 'finalized' and be
+    // deleted from list.
+    await Promise.all([txMgr.confirm(open), mineBlocks(service)]);
 
-        txMgr._tracker.clearExpiredTransactions();
-        expect(Object.keys(txMgr._tracker._transactions)).not.toContain(openId);
-        expect(size(txMgr._tracker._listeners))
-            .toEqual(size(txMgr._tracker._transactions));
-      });
+    txMgr._tracker.clearExpiredTransactions();
+    expect(Object.keys(txMgr._tracker._transactions)).not.toContain(openId);
+    expect(size(txMgr._tracker._listeners)).toEqual(
+      size(txMgr._tracker._transactions)
+    );
+  });
 
   test('clear Tx when state is error and older than 5 minutes', async () => {
     expect.assertions(4);
-    await Promise.all([ txMgr.confirm(open), mineBlocks(service) ]);
+    await Promise.all([txMgr.confirm(open), mineBlocks(service)]);
 
     const lock = cdp.lockEth(0.01);
-    await Promise.all([ lock, mineBlocks(service) ]);
+    await Promise.all([lock, mineBlocks(service)]);
 
     const draw = cdp.drawDai(1000);
     const drawId = uniqueId(draw).toString();
@@ -227,29 +240,30 @@ describe('lifecycle hooks', () => {
     expect(Object.keys(txMgr._tracker._transactions)).not.toContain(drawId);
   });
 
-  test(
-      'finalized Tx is set to correct state without without requiring a call to confirm()',
-      async () => {
-        const openHandlers = makeHandlers('open');
-        txMgr.listen(open, openHandlers);
-        const openTx = txMgr._tracker.get(uniqueId(open));
+  test('finalized Tx is set to correct state without without requiring a call to confirm()', async () => {
+    const openHandlers = makeHandlers('open');
+    txMgr.listen(open, openHandlers);
+    const openTx = txMgr._tracker.get(uniqueId(open));
 
-        await mineBlocks(service);
+    await mineBlocks(service);
 
-        expect(openTx.isFinalized()).toBe(true);
-        expect(openHandlers.confirmed).toBeCalled();
-      });
+    expect(openTx.isFinalized()).toBe(true);
+    expect(openHandlers.confirmed).toBeCalled();
+  });
 
   test('return error message with error callback', async () => {
-    const makeListener = () => jest.fn((tx, err) => { log('Tx error:', err); });
+    const makeListener = () =>
+      jest.fn((tx, err) => {
+        log('Tx error:', err);
+      });
 
-    const makeHandlers = () => ({error : makeListener()});
+    const makeHandlers = () => ({ error: makeListener() });
     const drawHandlers = makeHandlers();
 
-    await Promise.all([ txMgr.confirm(open), mineBlocks(service) ]);
+    await Promise.all([txMgr.confirm(open), mineBlocks(service)]);
 
     const lock = cdp.lockEth(0.01);
-    await Promise.all([ lock, mineBlocks(service) ]);
+    await Promise.all([lock, mineBlocks(service)]);
 
     const draw = cdp.drawDai(1000);
     const drawId = uniqueId(draw).toString();
@@ -280,21 +294,36 @@ describe('transaction options', () => {
     let options;
     expect.assertions(2);
 
-    options =
-        await txManager._buildTransactionOptions({}, contract, 'open', []);
-    expect(Object.keys(options)).toEqual([ 'gasLimit', 'gasPrice', 'nonce' ]);
+    options = await txManager._buildTransactionOptions(
+      {},
+      contract,
+      'open',
+      []
+    );
+    expect(Object.keys(options)).toEqual(['gasLimit', 'gasPrice', 'nonce']);
 
     txManager.get('gas').disablePrice = true;
-    options =
-        await txManager._buildTransactionOptions({}, contract, 'open', []);
-    expect(Object.keys(options)).toEqual([ 'gasLimit', 'nonce' ]);
+    options = await txManager._buildTransactionOptions(
+      {},
+      contract,
+      'open',
+      []
+    );
+    expect(Object.keys(options)).toEqual(['gasLimit', 'nonce']);
   });
 
   test('passes through explicit options', async () => {
     const options = await txManager._buildTransactionOptions(
-        {value : 2}, contract, 'open', []);
+      { value: 2 },
+      contract,
+      'open',
+      []
+    );
     expect(Object.keys(options)).toEqual([
-      'value', 'gasLimit', 'gasPrice', 'nonce'
+      'value',
+      'gasLimit',
+      'gasPrice',
+      'nonce'
     ]);
   });
 });

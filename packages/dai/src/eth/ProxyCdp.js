@@ -1,38 +1,39 @@
 import contracts from '../../contracts/contracts';
 
-import {DAI, ETH, getCurrency, USD} from './Currency';
+import { DAI, ETH, getCurrency, USD } from './Currency';
 
 export default class ProxyCdp {
-  constructor(cdpService, dsProxyAddress, cdpId,
-              {lockAndDraw = false, amountEth = null, amountDai = null} = {}) {
+  constructor(
+    cdpService,
+    dsProxyAddress,
+    cdpId,
+    { lockAndDraw = false, amountEth = null, amountDai = null } = {}
+  ) {
     this._cdpService = cdpService;
     this._smartContractService = this._cdpService.get('smartContract');
     this._transactionManager =
         this._smartContractService.get('transactionManager'); // prettier-ignore
 
-    if (dsProxyAddress)
-      this.dsProxyAddress = dsProxyAddress.toLowerCase();
+    if (dsProxyAddress) this.dsProxyAddress = dsProxyAddress.toLowerCase();
     if (lockAndDraw) {
-      this._create({lockAndDraw, amountEth, amountDai});
+      this._create({ lockAndDraw, amountEth, amountDai });
     } else {
-      if (!cdpId)
-        this._create();
-      else
-        this.id = cdpId;
+      if (!cdpId) this._create();
+      else this.id = cdpId;
     }
 
     this._emitterInstance = this._cdpService.get('event').buildEmitter();
     this.on = this._emitterInstance.on;
     this._emitterInstance.registerPollEvents({
-      COLLATERAL : {
-        USD : () => this.getCollateralValue(USD),
-        ETH : () => this.getCollateralValue()
+      COLLATERAL: {
+        USD: () => this.getCollateralValue(USD),
+        ETH: () => this.getCollateralValue()
       },
-      DEBT : {dai : () => this.getDebtValue()}
+      DEBT: { dai: () => this.getDebtValue() }
     });
   }
 
-  _create({lockAndDraw = false, amountEth = null, amountDai = null} = {}) {
+  _create({ lockAndDraw = false, amountEth = null, amountDai = null } = {}) {
     const tub = this._smartContractService.getContract(contracts.SAI_TUB);
     const saiProxy = this._smartContractService.getContract(
         contracts.SAI_PROXY); // prettier-ignore
@@ -48,23 +49,27 @@ export default class ProxyCdp {
         const valueDai = getCurrency(amountDai, DAI).toFixed('wei');
         method = 'createOpenLockAndDraw';
         args = [
-          proxyRegistryAddress, tub.address, valueDai, {
-            metadata : {
-              action : {
-                name : method,
-                amountEth : getCurrency(amountEth, ETH),
-                amountDai : getCurrency(amountDai, DAI)
+          proxyRegistryAddress,
+          tub.address,
+          valueDai,
+          {
+            metadata: {
+              action: {
+                name: method,
+                amountEth: getCurrency(amountEth, ETH),
+                amountDai: getCurrency(amountDai, DAI)
               }
             },
-            value : valueEth,
+            value: valueEth,
             promise
           }
         ];
       } else {
         method = 'createAndOpen';
         args = [
-          proxyRegistryAddress, tub.address,
-          {metadata : {action : {name : method}}, promise}
+          proxyRegistryAddress,
+          tub.address,
+          { metadata: { action: { name: method } }, promise }
         ];
       }
     } else {
@@ -73,26 +78,29 @@ export default class ProxyCdp {
         const valueDai = getCurrency(amountDai, DAI).toFixed('wei');
         method = 'lockAndDraw(address,uint256)';
         args = [
-          tub.address, valueDai, {
-            metadata : {
-              action : {
-                name : 'openLockAndDraw',
-                amountEth : getCurrency(amountEth, ETH),
-                amountDai : getCurrency(amountDai, DAI),
-                proxy : this.dsProxyAddress
+          tub.address,
+          valueDai,
+          {
+            metadata: {
+              action: {
+                name: 'openLockAndDraw',
+                amountEth: getCurrency(amountEth, ETH),
+                amountDai: getCurrency(amountDai, DAI),
+                proxy: this.dsProxyAddress
               }
             },
-            value : valueEth,
-            dsProxy : this.dsProxyAddress,
+            value: valueEth,
+            dsProxy: this.dsProxyAddress,
             promise
           }
         ];
       } else {
         method = 'open';
         args = [
-          tub.address, {
-            metadata : {action : {name : method, proxy : this.dsProxyAddress}},
-            dsProxy : this.dsProxyAddress,
+          tub.address,
+          {
+            metadata: { action: { name: method, proxy: this.dsProxyAddress } },
+            dsProxy: this.dsProxyAddress,
             promise
           }
         ];
@@ -102,17 +110,17 @@ export default class ProxyCdp {
     const getId = txo => {
       let log;
       switch (txo.metadata.method) {
-      case 'createAndOpen':
-        log = txo.receipt.logs[5];
-        break;
-      case 'createOpenLockAndDraw':
-        log = txo.receipt.logs[5];
-        break;
-      case 'lockAndDraw':
-        log = txo.receipt.logs[2];
-        break;
-      case 'open':
-        log = txo.receipt.logs[2];
+        case 'createAndOpen':
+          log = txo.receipt.logs[5];
+          break;
+        case 'createOpenLockAndDraw':
+          log = txo.receipt.logs[5];
+          break;
+        case 'lockAndDraw':
+          log = txo.receipt.logs[2];
+          break;
+        case 'open':
+          log = txo.receipt.logs[2];
       }
 
       if (!this.dsProxyAddress) {
@@ -130,7 +138,9 @@ export default class ProxyCdp {
     this._transactionObject = promise;
   }
 
-  transactionObject() { return this._transactionObject; }
+  transactionObject() {
+    return this._transactionObject;
+  }
 }
 
 // Each of these passthrough methods gets called on the EthereumCdpService
@@ -138,26 +148,42 @@ export default class ProxyCdp {
 // is called and the DSProxy address and CDP id are passed as the first and
 // second arg Otherwise the method name is called and the just CDP id is passed
 const passthroughMethods = [
-  [ 'bite', false ], [ 'drawDai', true ], [ 'enoughMkrToWipe', false ],
-  [ 'freeEth', true ],
+  ['bite', false],
+  ['drawDai', true],
+  ['enoughMkrToWipe', false],
+  ['freeEth', true],
   // 'freePeth',
-  [ 'getCollateralValue', false ], [ 'getCollateralizationRatio', false ],
-  [ 'getDebtValue', false ], [ 'getGovernanceFee', false ],
-  [ 'getInfo', false ], [ 'getLiquidationPrice', false ], [ 'isSafe', false ],
-  [ 'give', true ], [ 'lockEth', true ],
+  ['getCollateralValue', false],
+  ['getCollateralizationRatio', false],
+  ['getDebtValue', false],
+  ['getGovernanceFee', false],
+  ['getInfo', false],
+  ['getLiquidationPrice', false],
+  ['isSafe', false],
+  ['give', true],
+  ['lockEth', true],
   // 'lockPeth',
   // 'lockWeth',
-  [ 'shut', true ], [ 'wipeDai', true ], [ 'lockEthAndDrawDai', true ]
+  ['shut', true],
+  ['wipeDai', true],
+  ['lockEthAndDrawDai', true]
 ];
 
-Object.assign(ProxyCdp.prototype,
-              passthroughMethods.reduce((acc, [ name, useProxy ]) => {
-                acc[name] = useProxy ? function(...args) {
-                  return this._cdpService[name + 'Proxy'](this.dsProxyAddress,
-                                                          this.id, ...args);
-                } : function(...args) {
-                  return this._cdpService[name](this.id, ...args);
-                };
+Object.assign(
+  ProxyCdp.prototype,
+  passthroughMethods.reduce((acc, [name, useProxy]) => {
+    acc[name] = useProxy
+      ? function(...args) {
+          return this._cdpService[name + 'Proxy'](
+            this.dsProxyAddress,
+            this.id,
+            ...args
+          );
+        }
+      : function(...args) {
+          return this._cdpService[name](this.id, ...args);
+        };
 
-                return acc;
-              }, {}));
+    return acc;
+  }, {})
+);

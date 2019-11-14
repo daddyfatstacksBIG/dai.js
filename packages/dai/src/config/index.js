@@ -1,11 +1,10 @@
-import {standardizeConfig} from '@makerdao/services-core';
+import { standardizeConfig } from '@makerdao/services-core';
 import merge from 'lodash/merge';
 
 export function mergeServiceConfig(role, sink, source, resolver) {
   sink = standardizeConfig(role, sink, resolver);
   source = standardizeConfig(role, source);
-  if (sink[0] === false || source[0] === false)
-    return source;
+  if (sink[0] === false || source[0] === false) return source;
 
   return [
     typeof source[0] != 'boolean' ? source[0] : sink[0],
@@ -14,7 +13,6 @@ export function mergeServiceConfig(role, sink, source, resolver) {
 }
 
 export function getSettings(config) {
-  if (config instanceof Array)
-    return config[1];
+  if (config instanceof Array) return config[1];
   return config;
 }

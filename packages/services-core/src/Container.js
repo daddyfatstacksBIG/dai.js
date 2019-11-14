@@ -2,7 +2,7 @@ import uniq from 'lodash/uniq';
 import values from 'lodash/values';
 import toposort from 'toposort';
 
-import ServiceManager, {InvalidServiceError} from './ServiceManager';
+import ServiceManager, { InvalidServiceError } from './ServiceManager';
 
 class ServiceAlreadyRegisteredError extends Error {
   constructor(name) {
@@ -39,7 +39,7 @@ export function orderServices(services) {
     if (depNames.length === 0) {
       servicesWithoutDeps.push(name);
     } else {
-      depNames.forEach(dn => edges.push([ dn, name ]));
+      depNames.forEach(dn => edges.push([dn, name]));
     }
   }
   return uniq(toposort(edges).concat(servicesWithoutDeps));
@@ -54,7 +54,8 @@ class Container {
   register(service, name = null) {
     if (!ServiceManager.isValidService(service)) {
       throw new InvalidServiceError(
-          'Service must be an object with manager() method returning a valid ServiceManager');
+        'Service must be an object with manager() method returning a valid ServiceManager'
+      );
     }
 
     name = name || service.manager().name();
@@ -69,14 +70,17 @@ class Container {
   }
 
   service(name, throwIfMissing = true) {
-    const extractedServices = [ 'exchange' ];
+    const extractedServices = ['exchange'];
 
     if (!name) {
       throw new Error('Provide a service name.');
     }
 
-    if (!this._services[name] && throwIfMissing &&
-        extractedServices.includes(name)) {
+    if (
+      !this._services[name] &&
+      throwIfMissing &&
+      extractedServices.includes(name)
+    ) {
       throw new ExtractedServiceError(name);
     }
 
@@ -87,7 +91,9 @@ class Container {
     return this._services[name];
   }
 
-  getRegisteredServiceNames() { return Object.keys(this._services); }
+  getRegisteredServiceNames() {
+    return Object.keys(this._services);
+  }
 
   injectDependencies() {
     const services = values(this._services);
@@ -95,20 +101,24 @@ class Container {
       const manager = service.manager();
       for (let name of manager.dependencies()) {
         const dep = this._services[name];
-        if (!dep)
-          throw new ServiceNotFoundError(name);
+        if (!dep) throw new ServiceNotFoundError(name);
         manager.inject(name, this._services[name]);
       }
     }
   }
 
-  initialize() { return this._waitForServices(s => s.manager().initialize()); }
+  initialize() {
+    return this._waitForServices(s => s.manager().initialize());
+  }
 
-  connect() { return this._waitForServices(s => s.manager().connect()); }
+  connect() {
+    return this._waitForServices(s => s.manager().connect());
+  }
 
   authenticate() {
-    return this._waitForServices(s => s.manager().authenticate())
-        .then(() => { this.isAuthenticated = true; });
+    return this._waitForServices(s => s.manager().authenticate()).then(() => {
+      this.isAuthenticated = true;
+    });
   }
 
   async _waitForServices(callback) {

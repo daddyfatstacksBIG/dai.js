@@ -1,40 +1,42 @@
-import {PrivateService} from '@makerdao/services-core';
+import { PrivateService } from '@makerdao/services-core';
 
 import contracts from '../../contracts/contracts';
 import tracksTransactions from '../utils/tracksTransactions';
 
-import {PETH, WETH} from './Currency';
+import { PETH, WETH } from './Currency';
 
 // FIXME we should probably just get rid of this service entirely and move the
 // functions into WethToken and PethToken
 
 export default class TokenConversionService extends PrivateService {
   constructor(name = 'conversion') {
-    super(name, [ 'smartContract', 'token', 'allowance' ]);
+    super(name, ['smartContract', 'token', 'allowance']);
   }
 
-  _getToken(token) { return this.get('token').getToken(token); }
+  _getToken(token) {
+    return this.get('token').getToken(token);
+  }
 
   convertEthToWeth(amount, options) {
     return this._getToken(WETH).deposit(amount, options);
   }
 
   @tracksTransactions
-  async convertWethToPeth(amount, {unit = WETH, promise} = {}) {
+  async convertWethToPeth(amount, { unit = WETH, promise } = {}) {
     const pethContract = this._getToken(PETH);
 
-    await this.get('allowance')
-        .requireAllowance(
-            WETH,
-            this.get('smartContract').getContract(contracts.SAI_TUB).address,
-            {promise});
-    return pethContract.join(amount, {unit, promise});
+    await this.get('allowance').requireAllowance(
+      WETH,
+      this.get('smartContract').getContract(contracts.SAI_TUB).address,
+      { promise }
+    );
+    return pethContract.join(amount, { unit, promise });
   }
 
   @tracksTransactions
-  async convertEthToPeth(value, {promise}) {
-    await this.convertEthToWeth(value, {promise});
-    return this.convertWethToPeth(value, {promise});
+  async convertEthToPeth(value, { promise }) {
+    await this.convertEthToWeth(value, { promise });
+    return this.convertWethToPeth(value, { promise });
   }
 
   convertWethToEth(amount, options) {
@@ -42,20 +44,20 @@ export default class TokenConversionService extends PrivateService {
   }
 
   @tracksTransactions
-  async convertPethToWeth(amount, {unit = WETH, promise}) {
+  async convertPethToWeth(amount, { unit = WETH, promise }) {
     const pethToken = this._getToken(PETH);
 
-    await this.get('allowance')
-        .requireAllowance(
-            PETH,
-            this.get('smartContract').getContract(contracts.SAI_TUB).address,
-            {promise});
-    return pethToken.exit(amount, {unit, promise});
+    await this.get('allowance').requireAllowance(
+      PETH,
+      this.get('smartContract').getContract(contracts.SAI_TUB).address,
+      { promise }
+    );
+    return pethToken.exit(amount, { unit, promise });
   }
 
   @tracksTransactions
-  async convertPethToEth(amount, {promise}) {
-    await this.convertPethToWeth(amount, {promise});
-    return this.convertWethToEth(amount, {promise});
+  async convertPethToEth(amount, { promise }) {
+    await this.convertPethToWeth(amount, { promise });
+    return this.convertWethToEth(amount, { promise });
   }
 }

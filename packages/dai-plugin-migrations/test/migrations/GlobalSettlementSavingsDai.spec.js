@@ -1,17 +1,21 @@
-import {ETH, MDAI} from '@makerdao/dai-plugin-mcd';
-import {restoreSnapshot, takeSnapshot} from '@makerdao/test-helpers';
+import { ETH, MDAI } from '@makerdao/dai-plugin-mcd';
+import { restoreSnapshot, takeSnapshot } from '@makerdao/test-helpers';
 
-import {Migrations, ServiceRoles} from '../../src/constants';
-import {migrationMaker, setupCollateral} from '../helpers';
-import {globalSettlement, mockContracts} from '../helpers/mocks';
+import { Migrations, ServiceRoles } from '../../src/constants';
+import { migrationMaker, setupCollateral } from '../helpers';
+import { globalSettlement, mockContracts } from '../helpers/mocks';
 
 let maker, migration, cdpManager, smartContract, snapshot;
 
 function joinSavings(amountInDai) {
-  return smartContract.getContract('PROXY_ACTIONS_DSR')
-      .join(smartContract.getContractAddress('MCD_JOIN_DAI'),
-            smartContract.getContractAddress('MCD_POT'),
-            amountInDai.toFixed('wei'), {dsProxy : true});
+  return smartContract
+    .getContract('PROXY_ACTIONS_DSR')
+    .join(
+      smartContract.getContractAddress('MCD_JOIN_DAI'),
+      smartContract.getContractAddress('MCD_POT'),
+      amountInDai.toFixed('wei'),
+      { dsProxy: true }
+    );
 }
 
 describe('Global Settlement Savings DAI Migration', () => {
@@ -34,48 +38,38 @@ describe('Global Settlement Savings DAI Migration', () => {
     jest.restoreAllMocks();
   });
 
-  afterEach(async () => { await restoreSnapshot(snapshot, maker); });
+  afterEach(async () => {
+    await restoreSnapshot(snapshot, maker);
+  });
 
-  test(
-      'if the system is in global settlement and there is no DAI in savings DAI, return false',
-      async () => {
-        mockContracts(smartContract,
-                      {MCD_END_1 : globalSettlement.afterCage()});
+  test('if the system is in global settlement and there is no DAI in savings DAI, return false', async () => {
+    mockContracts(smartContract, { MCD_END_1: globalSettlement.afterCage() });
 
-        expect(await migration.check()).toBeFalsy();
-      });
+    expect(await migration.check()).toBeFalsy();
+  });
 
-  test(
-      'if the system is in global settlement and there is DAI in savings DAI, return true',
-      async () => {
-        await setupCollateral(maker, 'ETH-A', {price : 150, debtCeiling : 50});
-        await cdpManager.openLockAndDraw('ETH-A', ETH(0.1), MDAI(1));
-        await joinSavings(MDAI(1));
+  test('if the system is in global settlement and there is DAI in savings DAI, return true', async () => {
+    await setupCollateral(maker, 'ETH-A', { price: 150, debtCeiling: 50 });
+    await cdpManager.openLockAndDraw('ETH-A', ETH(0.1), MDAI(1));
+    await joinSavings(MDAI(1));
 
-        mockContracts(smartContract,
-                      {MCD_END_1 : globalSettlement.afterCage()});
+    mockContracts(smartContract, { MCD_END_1: globalSettlement.afterCage() });
 
-        expect(await migration.check()).toBeTruthy();
-      });
+    expect(await migration.check()).toBeTruthy();
+  });
 
-  test(
-      'if the system is NOT in global settlement and there is no DAI in savings DAI, return false',
-      async () => {
-        mockContracts(smartContract,
-                      {MCD_END_1 : globalSettlement.beforeCage()});
+  test('if the system is NOT in global settlement and there is no DAI in savings DAI, return false', async () => {
+    mockContracts(smartContract, { MCD_END_1: globalSettlement.beforeCage() });
 
-        expect(await migration.check()).toBeFalsy();
-      });
+    expect(await migration.check()).toBeFalsy();
+  });
 
-  test(
-      'if the system is NOT in global settlement and there is DAI in savings DAI, return false',
-      async () => {
-        await setupCollateral(maker, 'ETH-A', {price : 150, debtCeiling : 50});
-        await cdpManager.openLockAndDraw('ETH-A', ETH(0.1), MDAI(1));
-        mockContracts(smartContract,
-                      {MCD_END_1 : globalSettlement.beforeCage()});
-        await joinSavings(MDAI(1));
+  test('if the system is NOT in global settlement and there is DAI in savings DAI, return false', async () => {
+    await setupCollateral(maker, 'ETH-A', { price: 150, debtCeiling: 50 });
+    await cdpManager.openLockAndDraw('ETH-A', ETH(0.1), MDAI(1));
+    mockContracts(smartContract, { MCD_END_1: globalSettlement.beforeCage() });
+    await joinSavings(MDAI(1));
 
-        expect(await migration.check()).toBeFalsy();
-      });
+    expect(await migration.check()).toBeFalsy();
+  });
 });

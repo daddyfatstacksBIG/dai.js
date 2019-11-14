@@ -1,10 +1,9 @@
-import {mineBlocks} from '@makerdao/test-helpers';
-import TestAccountProvider from
-    '@makerdao/test-helpers/src/TestAccountProvider';
+import { mineBlocks } from '@makerdao/test-helpers';
+import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
 
 import Cdp from '../../src/eth/Cdp';
-import {USD_DAI} from '../../src/eth/Currency';
-import {buildTestEthereumCdpService} from '../helpers/serviceBuilders';
+import { USD_DAI } from '../../src/eth/Currency';
+import { buildTestEthereumCdpService } from '../helpers/serviceBuilders';
 
 let cdpService;
 
@@ -55,8 +54,8 @@ describe('find cdp', () => {
 
   test('regression: handle null proxy correctly', async () => {
     const cdps = buildTestEthereumCdpService({
-      accounts : {
-        default : {type : 'privateKey', ...TestAccountProvider.nextAccount()}
+      accounts: {
+        default: { type: 'privateKey', ...TestAccountProvider.nextAccount() }
       }
     });
     await cdps.manager().authenticate();
