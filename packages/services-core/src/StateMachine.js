@@ -6,30 +6,24 @@ export default class StateMachine {
       throw new Error('StateMachine transitions parameter must be an object.');
     }
 
-    if (
-      Object.keys(transitions).filter(
-        k => transitions.hasOwnProperty(k) && !(transitions[k] instanceof Array)
-      ).length > 0
-    ) {
+    if (Object.keys(transitions)
+            .filter(k => transitions.hasOwnProperty(k) &&
+                         !(transitions[k] instanceof Array))
+            .length > 0) {
       throw new Error('Illegal StateMachine transition found: not an array.');
     }
 
-    if (
-      Object.keys(transitions).filter(
-        k =>
-          transitions.hasOwnProperty(k) &&
-          transitions[k].filter(s => !transitions[s]).length > 0
-      ).length > 0
-    ) {
+    if (Object.keys(transitions)
+            .filter(k => transitions.hasOwnProperty(k) &&
+                         transitions[k].filter(s => !transitions[s]).length > 0)
+            .length > 0) {
       throw new Error(
-        'Illegal StateMachine transition found: target state not in transition map.'
-      );
+          'Illegal StateMachine transition found: target state not in transition map.');
     }
 
     if (!(transitions[initialState] instanceof Array)) {
-      throw new Error(
-        'Initial state ' + initialState + ' is not set in the transitions map.'
-      );
+      throw new Error('Initial state ' + initialState +
+                      ' is not set in the transitions map.');
     }
 
     this._state = initialState;
@@ -37,17 +31,13 @@ export default class StateMachine {
     this._stateChangedHandlers = [];
   }
 
-  onStateChanged(callback) {
-    this._stateChangedHandlers.push(callback);
-  }
+  onStateChanged(callback) { this._stateChangedHandlers.push(callback); }
 
-  state() {
-    return this._state;
-  }
+  state() { return this._state; }
 
   inState(state) {
     if (!(state instanceof Array)) {
-      state = [state];
+      state = [ state ];
     }
 
     return state.indexOf(this._state) >= 0;
@@ -56,10 +46,8 @@ export default class StateMachine {
   assertState(state, operation = '') {
     if (!this.inState(state)) {
       throw new IllegalStateError(
-        'Illegal operation for state ' +
-          this._state +
-          (operation.length > 0 ? ': ' + operation : '')
-      );
+          'Illegal operation for state ' + this._state +
+          (operation.length > 0 ? ': ' + operation : ''));
     }
   }
 
@@ -70,9 +58,8 @@ export default class StateMachine {
 
     if (newState !== this._state) {
       if (this._nextStates[this._state].indexOf(newState) < 0) {
-        throw new IllegalStateError(
-          'Illegal state transition: ' + this._state + ' to ' + newState
-        );
+        throw new IllegalStateError('Illegal state transition: ' + this._state +
+                                    ' to ' + newState);
       }
 
       const oldState = this._state;

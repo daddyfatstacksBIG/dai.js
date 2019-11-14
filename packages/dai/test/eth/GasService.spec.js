@@ -1,5 +1,7 @@
-import { buildTestService } from '../helpers/serviceBuilders';
-import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
+import TestAccountProvider from
+    '@makerdao/test-helpers/src/TestAccountProvider';
+
+import {buildTestService} from '../helpers/serviceBuilders';
 
 let getDummyTransaction, gasService;
 
@@ -9,13 +11,13 @@ beforeEach(async () => {
 });
 
 function buildTestGasService() {
-  const service = buildTestService('gas', { gas: true });
+  const service = buildTestService('gas', {gas : true});
 
   getDummyTransaction = function() {
     return {
-      from: TestAccountProvider.nextAddress(),
-      to: TestAccountProvider.nextAddress(),
-      amount: service.get('web3')._web3.utils.toWei('0.01')
+      from : TestAccountProvider.nextAddress(),
+      to : TestAccountProvider.nextAddress(),
+      amount : service.get('web3')._web3.utils.toWei('0.01')
     };
   };
 
@@ -24,17 +26,9 @@ function buildTestGasService() {
 
 test('initial values', async () => {
   const secondService = buildTestService('gas', {
-    gas: {
-      limit: {
-        multiplier: 2,
-        fallback: 2,
-        absolute: 2,
-        disable: true
-      },
-      price: {
-        transactionSpeed: 'fastest',
-        disable: true
-      }
+    gas : {
+      limit : {multiplier : 2, fallback : 2, absolute : 2, disable : true},
+      price : {transactionSpeed : 'fastest', disable : true}
     }
   });
   await secondService.manager().authenticate();
@@ -102,18 +96,8 @@ test('throws on invalid transaction speed', () => {
 
 test('fetches gas station data', async () => {
   const keys = [
-    'fast',
-    'fastest',
-    'safeLow',
-    'average',
-    'block_time',
-    'blockNum',
-    'speed',
-    'safeLowWait',
-    'avgWait',
-    'fastWait',
-    'fastestWait',
-    'gasPriceRange'
+    'fast', 'fastest', 'safeLow', 'average', 'block_time', 'blockNum', 'speed',
+    'safeLowWait', 'avgWait', 'fastWait', 'fastestWait', 'gasPriceRange'
   ];
 
   expect(Object.keys(await gasService._gasStationDataPromise)).toEqual(keys);
@@ -122,9 +106,8 @@ test('fetches gas station data', async () => {
 test('returns a valid gas price', async () => {
   const gasStationData = await gasService._gasStationDataPromise;
   const gasPrice = await gasService.getGasPrice();
-  const expectedValue = gasService
-    .get('web3')
-    ._web3.utils.toWei((gasStationData['fast'] / 10).toString(), 'gwei');
+  const expectedValue = gasService.get('web3')._web3.utils.toWei(
+      (gasStationData['fast'] / 10).toString(), 'gwei');
   expect(typeof gasPrice).toBe('string');
   expect(gasPrice).toBe(expectedValue);
 });
@@ -137,34 +120,21 @@ test('returns a valid wait time', async () => {
 });
 
 test('setting an explicit gasLimit bypasses estimation', async () => {
-  const secondService = buildTestService('gas', {
-    gas: {
-      limit: 2
-    }
-  });
+  const secondService = buildTestService('gas', {gas : {limit : 2}});
   await secondService.manager().authenticate();
   expect(await secondService.estimateGasLimit()).toBe(2);
 });
 
 test('setting an explicit gasPrice bypasses gasStation data', async () => {
-  const secondService = buildTestService('gas', {
-    gas: {
-      price: 2
-    }
-  });
+  const secondService = buildTestService('gas', {gas : {price : 2}});
   await secondService.manager().authenticate();
 
   expect(await secondService.getGasPrice()).toBe(2);
 });
 
 test('disabling gasLimit returns fallback', async () => {
-  const secondService = buildTestService('gas', {
-    gas: {
-      limit: {
-        disable: true
-      }
-    }
-  });
+  const secondService =
+      buildTestService('gas', {gas : {limit : {disable : true}}});
   await secondService.manager().authenticate();
 
   expect(await secondService.estimateGasLimit()).toBe(4000000);

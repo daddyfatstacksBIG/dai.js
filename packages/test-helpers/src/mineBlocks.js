@@ -1,5 +1,6 @@
-import callGanache from './callGanache';
 import assert from 'assert';
+
+import callGanache from './callGanache';
 
 const WAIT_AFTER_MINE_CALL = 250;
 
@@ -9,15 +10,15 @@ export default async function mineBlocks(service, count) {
   if (serviceName === 'web3') {
     web3Service = service;
   } else {
-    if (serviceName !== 'token') service = service.get('token');
+    if (serviceName !== 'token')
+      service = service.get('token');
     web3Service = service.get('web3');
   }
-  if (!count) count = web3Service.confirmedBlockCount() + 2;
+  if (!count)
+    count = web3Service.confirmedBlockCount() + 2;
 
-  assert(
-    WAIT_AFTER_MINE_CALL > web3Service._pollingInterval * 2,
-    'mineBlocks may not work well; pollingInterval is too long'
-  );
+  assert(WAIT_AFTER_MINE_CALL > web3Service._pollingInterval * 2,
+         'mineBlocks may not work well; pollingInterval is too long');
 
   const initialNumber = web3Service.blockNumber();
 
@@ -28,8 +29,6 @@ export default async function mineBlocks(service, count) {
 
   const newNumber = web3Service.blockNumber();
   const expectedNumber = initialNumber + count;
-  assert(
-    newNumber >= expectedNumber,
-    `blockNumber should be >= ${expectedNumber}, is ${newNumber}`
-  );
+  assert(newNumber >= expectedNumber,
+         `blockNumber should be >= ${expectedNumber}, is ${newNumber}`);
 }

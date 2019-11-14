@@ -1,12 +1,14 @@
-import { DAI, PETH, USD, USD_ETH, ETH, MKR } from '../../src/eth/Currency';
 import {
   mineBlocks,
-  takeSnapshot,
-  restoreSnapshot
+  restoreSnapshot,
+  takeSnapshot
 } from '@makerdao/test-helpers';
-import { buildTestService } from '../helpers/serviceBuilders';
-import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
-import { promiseWait } from '../../src/utils';
+import TestAccountProvider from
+    '@makerdao/test-helpers/src/TestAccountProvider';
+
+import {DAI, ETH, MKR, PETH, USD, USD_ETH} from '../../src/eth/Currency';
+import {promiseWait} from '../../src/utils';
+import {buildTestService} from '../helpers/serviceBuilders';
 
 let priceService, currentAddress;
 
@@ -24,22 +26,17 @@ export default function sharedTests(openCdp, initCdpService) {
 
   beforeAll(async () => {
     cdpService = await initCdpService();
-    currentAddress = cdpService
-      .get('token')
-      .get('web3')
-      .currentAddress();
+    currentAddress = cdpService.get('token').get('web3').currentAddress();
     dai = cdpService.get('token').getToken(DAI);
   });
 
   describe('basic checks', () => {
     let cdp;
 
-    beforeAll(async () => {
-      cdp = await openCdp(cdpService);
-    });
+    beforeAll(async () => { cdp = await openCdp(cdpService); });
 
     test('check properties', () => {
-      const { id } = cdp;
+      const {id} = cdp;
       expect(typeof id).toBe('number');
       expect(id).toBeGreaterThan(0);
       expect(cdp._cdpService).toBeDefined();
@@ -91,9 +88,7 @@ export default function sharedTests(openCdp, initCdpService) {
 
     // FIXME this breaks other tests, possibly because it leaves the test chain
     // in a broken state
-    test.skip('when safe', async () => {
-      await expect(cdp.bite()).rejects;
-    });
+    test.skip('when safe', async () => { await expect(cdp.bite()).rejects; });
 
     // FIXME test something meaningful
     test('when unsafe', async () => {
@@ -153,10 +148,9 @@ export default function sharedTests(openCdp, initCdpService) {
         let snapshotData, nonceService, transactionCount;
 
         beforeAll(async () => {
-          nonceService = cdpService
-            .get('smartContract')
-            .get('transactionManager')
-            .get('nonce');
+          nonceService = cdpService.get('smartContract')
+                             .get('transactionManager')
+                             .get('nonce');
           transactionCount = nonceService._counts[currentAddress];
 
           // wait at least a second for the fees to get updated
@@ -167,7 +161,7 @@ export default function sharedTests(openCdp, initCdpService) {
           // Restoring the snapshot resets the account here. This causes any
           // following tests that call authenticated functions to fail
           snapshotData = await takeSnapshot();
-          await cdpService._drip(); //drip() updates _rhi and thus all cdp fees
+          await cdpService._drip(); // drip() updates _rhi and thus all cdp fees
           nonceService._counts[currentAddress] = transactionCount;
         });
 
@@ -189,15 +183,13 @@ export default function sharedTests(openCdp, initCdpService) {
           const amountToWipe = DAI(1);
           const mkr = cdpService.get('token').getToken(MKR);
           const [fee, debt, balance] = await Promise.all([
-            cdp.getGovernanceFee(MKR),
-            cdp.getDebtValue(),
+            cdp.getGovernanceFee(MKR), cdp.getDebtValue(),
             mkr.balanceOf(currentAddress)
           ]);
-          const mkrOwed = amountToWipe
-            .div(debt)
-            .toBigNumber()
-            .times(fee.toBigNumber());
-          const mkrToSendAway = balance.minus(mkrOwed.times(0.99)); //keep 99% of MKR needed
+          const mkrOwed =
+              amountToWipe.div(debt).toBigNumber().times(fee.toBigNumber());
+          const mkrToSendAway =
+              balance.minus(mkrOwed.times(0.99)); // keep 99% of MKR needed
           const other = TestAccountProvider.nextAddress();
           await mkr.transfer(other, mkrToSendAway);
           const enoughMkrToWipe = await cdp.enoughMkrToWipe(1);
@@ -206,9 +198,8 @@ export default function sharedTests(openCdp, initCdpService) {
             await cdp.wipeDai(1);
           } catch (err) {
             expect(err).toBeTruthy();
-            expect(err.message).toBe(
-              'not enough MKR balance to cover governance fee'
-            );
+            expect(err.message)
+                .toBe('not enough MKR balance to cover governance fee');
           }
         });
 
@@ -216,11 +207,11 @@ export default function sharedTests(openCdp, initCdpService) {
           expect.assertions(3);
           const mkr = cdpService.get('token').getToken(MKR);
           const [fee, debt, balance] = await Promise.all([
-            cdp.getGovernanceFee(MKR),
-            cdp.getDebtValue(),
+            cdp.getGovernanceFee(MKR), cdp.getDebtValue(),
             mkr.balanceOf(currentAddress)
           ]);
-          const mkrToSendAway = balance.minus(fee.times(0.99)); //keep 99% of MKR needed
+          const mkrToSendAway =
+              balance.minus(fee.times(0.99)); // keep 99% of MKR needed
           const other = TestAccountProvider.nextAddress();
           await mkr.transfer(other, mkrToSendAway);
           const enoughMkrToWipe = await cdp.enoughMkrToWipe(debt);
@@ -229,9 +220,8 @@ export default function sharedTests(openCdp, initCdpService) {
             await cdp.shut();
           } catch (err) {
             expect(err).toBeTruthy();
-            expect(err.message).toBe(
-              'not enough MKR balance to cover governance fee'
-            );
+            expect(err.message)
+                .toBe('not enough MKR balance to cover governance fee');
           }
         });
 
@@ -273,9 +263,8 @@ export default function sharedTests(openCdp, initCdpService) {
         expect(price).toEqual(USD_ETH(37.5));
       });
 
-      test('check if cdp is safe', async () => {
-        expect(await cdp.isSafe()).toBe(true);
-      });
+      test('check if cdp is safe',
+           async () => { expect(await cdp.isSafe()).toBe(true); });
 
       test('read collateralization ratio', async () => {
         const ethPerPeth = await cdpService.get('price').getWethToPethRatio();

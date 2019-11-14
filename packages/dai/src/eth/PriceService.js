@@ -1,9 +1,11 @@
-import { PrivateService } from '@makerdao/services-core';
-import contracts from '../../contracts/contracts';
-import { RAY } from '../utils/constants';
+import {PrivateService} from '@makerdao/services-core';
 import BigNumber from 'bignumber.js';
 import abi from 'web3-eth-abi';
-import { getCurrency, ETH, USD_PETH, MKR, USD_ETH, USD_MKR } from './Currency';
+
+import contracts from '../../contracts/contracts';
+import {RAY} from '../utils/constants';
+
+import {ETH, getCurrency, MKR, USD_ETH, USD_MKR, USD_PETH} from './Currency';
 
 export default class PriceService extends PrivateService {
   /**
@@ -11,20 +13,14 @@ export default class PriceService extends PrivateService {
    */
 
   constructor(name = 'price') {
-    super(name, ['token', 'smartContract', 'event']);
+    super(name, [ 'token', 'smartContract', 'event' ]);
   }
 
   initialize() {
     this.get('event').registerPollEvents({
-      'price/ETH_USD': {
-        price: () => this.getEthPrice()
-      },
-      'price/MKR_USD': {
-        price: () => this.getMkrPrice()
-      },
-      'price/WETH_PETH': {
-        ratio: () => this.getWethToPethRatio()
-      }
+      'price/ETH_USD' : {price : () => this.getEthPrice()},
+      'price/MKR_USD' : {price : () => this.getMkrPrice()},
+      'price/WETH_PETH' : {ratio : () => this.getWethToPethRatio()}
     });
   }
 
@@ -39,8 +35,8 @@ export default class PriceService extends PrivateService {
 
   getWethToPethRatio() {
     return this._getContract(contracts.SAI_TUB)
-      .per()
-      .then(bn => new BigNumber(bn.toString()).dividedBy(RAY).toNumber());
+        .per()
+        .then(bn => new BigNumber(bn.toString()).dividedBy(RAY).toNumber());
   }
 
   async getEthPrice() {
@@ -55,13 +51,13 @@ export default class PriceService extends PrivateService {
     return USD_MKR.wei((await this._getContract(contracts.SAI_PEP).peek())[0]);
   }
 
-  setEthPrice(newPrice, { unit = ETH, promise } = {}) {
+  setEthPrice(newPrice, {unit = ETH, promise} = {}) {
     const value = this._valueForContract(newPrice, unit);
-    return this._getContract(contracts.SAI_PIP).poke(value, { promise });
+    return this._getContract(contracts.SAI_PIP).poke(value, {promise});
   }
 
-  setMkrPrice(newPrice, { unit = MKR, promise } = {}) {
+  setMkrPrice(newPrice, {unit = MKR, promise} = {}) {
     const value = this._valueForContract(newPrice, unit);
-    return this._getContract(contracts.SAI_PEP).poke(value, { promise });
+    return this._getContract(contracts.SAI_PEP).poke(value, {promise});
   }
 }

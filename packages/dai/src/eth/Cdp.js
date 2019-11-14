@@ -1,5 +1,5 @@
 import contracts from '../../contracts/contracts';
-import { USD } from './Currency';
+import {USD} from './Currency';
 
 export default class Cdp {
   constructor(cdpService, cdpId = null) {
@@ -15,24 +15,21 @@ export default class Cdp {
     this._emitterInstance = this._cdpService.get('event').buildEmitter();
     this.on = this._emitterInstance.on;
     this._emitterInstance.registerPollEvents({
-      COLLATERAL: {
-        USD: () => this.getCollateralValue(USD),
-        ETH: () => this.getCollateralValue()
+      COLLATERAL : {
+        USD : () => this.getCollateralValue(USD),
+        ETH : () => this.getCollateralValue()
       },
-      DEBT: {
-        dai: () => this.getDebtValue()
-      }
+      DEBT : {dai : () => this.getDebtValue()}
     });
   }
 
   _create() {
-    const tubContract = this._smartContractService.getContract(
-      contracts.SAI_TUB
-    );
+    const tubContract =
+        this._smartContractService.getContract(contracts.SAI_TUB);
 
     const promise = (async () => {
       await 0;
-      const txo = await tubContract.open({ promise });
+      const txo = await tubContract.open({promise});
       this.id = parseInt(txo.receipt.logs[1].data, 16);
       return this;
     })();
@@ -40,40 +37,20 @@ export default class Cdp {
     this._transactionObject = promise;
   }
 
-  transactionObject() {
-    return this._transactionObject;
-  }
+  transactionObject() { return this._transactionObject; }
 }
 
 // each of these methods just calls the method of the same name on the service
 // with the cdp's id as the first argument
 const passthroughMethods = [
-  'bite',
-  'drawDai',
-  'enoughMkrToWipe',
-  'freeEth',
-  'freePeth',
-  'getCollateralValue',
-  'getCollateralizationRatio',
-  'getDebtValue',
-  'getGovernanceFee',
-  'getInfo',
-  'getLiquidationPrice',
-  'give',
-  'isSafe',
-  'lockEth',
-  'lockPeth',
-  'lockWeth',
-  'shut',
-  'wipeDai'
+  'bite', 'drawDai', 'enoughMkrToWipe', 'freeEth', 'freePeth',
+  'getCollateralValue', 'getCollateralizationRatio', 'getDebtValue',
+  'getGovernanceFee', 'getInfo', 'getLiquidationPrice', 'give', 'isSafe',
+  'lockEth', 'lockPeth', 'lockWeth', 'shut', 'wipeDai'
 ];
 
-Object.assign(
-  Cdp.prototype,
-  passthroughMethods.reduce((acc, name) => {
-    acc[name] = function(...args) {
-      return this._cdpService[name](this.id, ...args);
-    };
-    return acc;
-  }, {})
-);
+Object.assign(Cdp.prototype, passthroughMethods.reduce((acc, name) => {
+  acc[name] = function(
+      ...args) { return this._cdpService[name](this.id, ...args); };
+  return acc;
+}, {}));

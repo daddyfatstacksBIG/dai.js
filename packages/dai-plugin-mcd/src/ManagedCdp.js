@@ -1,12 +1,13 @@
-import { castAsCurrency, stringToBytes } from './utils';
-import { tracksTransactionsWithOptions } from './utils/tracksTransactions';
-import { ServiceRoles } from './constants';
 import assert from 'assert';
-import { MDAI } from './index';
+
+import {ServiceRoles} from './constants';
+import {MDAI} from './index';
 import * as math from './math';
+import {castAsCurrency, stringToBytes} from './utils';
+import {tracksTransactionsWithOptions} from './utils/tracksTransactions';
 
 export default class ManagedCdp {
-  constructor(id, ilk, cdpManager, options = { prefetch: true }) {
+  constructor(id, ilk, cdpManager, options = {prefetch : true}) {
     assert(typeof id === 'number', 'ID must be a number');
     this.id = id;
 
@@ -16,7 +17,8 @@ export default class ManagedCdp {
     this.type = cdpManager.get(ServiceRoles.CDP_TYPE).getCdpType(null, ilk);
     this.currency = this.type.currency;
     this.cache = {};
-    if (options.prefetch) this.prefetch();
+    if (options.prefetch)
+      this.prefetch();
   }
 
   get collateralAmount() {
@@ -28,10 +30,8 @@ export default class ManagedCdp {
   }
 
   get debtValue() {
-    return math.debtValue(
-      this._getCached('urnInfo').art,
-      this.type._getCached('vatInfo').rate
-    );
+    return math.debtValue(this._getCached('urnInfo').art,
+                          this.type._getCached('vatInfo').rate);
   }
 
   get collateralizationRatio() {
@@ -39,23 +39,15 @@ export default class ManagedCdp {
   }
 
   get liquidationPrice() {
-    return math.liquidationPrice(
-      this.collateralAmount,
-      this.debtValue,
-      this.type.liquidationRatio
-    );
+    return math.liquidationPrice(this.collateralAmount, this.debtValue,
+                                 this.type.liquidationRatio);
   }
 
-  get isSafe() {
-    return this.type.price.gte(this.liquidationPrice);
-  }
+  get isSafe() { return this.type.price.gte(this.liquidationPrice); }
 
   get minSafeCollateralAmount() {
     return math.minSafeCollateralAmount(
-      this.debtValue,
-      this.type.liquidationRatio,
-      this.type.price
-    );
+        this.debtValue, this.type.liquidationRatio, this.type.price);
   }
 
   get collateralAvailable() {
@@ -63,32 +55,22 @@ export default class ManagedCdp {
   }
 
   get daiAvailable() {
-    return math.daiAvailable(
-      this.collateralValue,
-      this.debtValue,
-      this.type.liquidationRatio
-    );
+    return math.daiAvailable(this.collateralValue, this.debtValue,
+                             this.type.liquidationRatio);
   }
 
-  getOwner() {
-    return this._cdpManager.getOwner(this.id);
-  }
+  getOwner() { return this._cdpManager.getOwner(this.id); }
 
   async getEventHistory() {
     const urn = await this.getUrn();
-    const events = await this._cdpManager
-      .get(ServiceRoles.QUERY_API)
-      .getCdpEventsForIlkAndUrn(this.ilk, urn);
+    const events = await this._cdpManager.get(ServiceRoles.QUERY_API)
+                       .getCdpEventsForIlkAndUrn(this.ilk, urn);
     return this._cdpManager.parseFrobEvents(
-      events,
-      this._cdpManager.get(ServiceRoles.CDP_TYPE)
-    );
+        events, this._cdpManager.get(ServiceRoles.CDP_TYPE));
   }
 
-  //todo: add caching?
-  getUrn() {
-    return this._cdpManager.getUrn(this.id);
-  }
+  // todo: add caching?
+  getUrn() { return this._cdpManager.getUrn(this.id); }
 
   // TODO: after these operations complete, update the cache. once that's done,
   // update ManagedCdp.spec to use expectValues instead of
@@ -98,26 +80,15 @@ export default class ManagedCdp {
     return this._cdpManager.lock(this.id, this.ilk, amount, null);
   }
 
-  drawDai(amount) {
-    return this.lockAndDraw(undefined, amount);
-  }
+  drawDai(amount) { return this.lockAndDraw(undefined, amount); }
 
-  @tracksTransactionsWithOptions({ numArguments: 3 })
-  lockAndDraw(
-    lockAmount = this.currency(0),
-    drawAmount = MDAI(0),
-    { promise }
-  ) {
+  @tracksTransactionsWithOptions({numArguments : 3})
+  lockAndDraw(lockAmount = this.currency(0), drawAmount = MDAI(0), {promise}) {
     assert(lockAmount && drawAmount, 'amounts must be defined');
     lockAmount = castAsCurrency(lockAmount, this.currency);
     drawAmount = castAsCurrency(drawAmount, MDAI);
-    return this._cdpManager.lockAndDraw(
-      this.id,
-      this.ilk,
-      lockAmount,
-      drawAmount,
-      { promise }
-    );
+    return this._cdpManager.lockAndDraw(this.id, this.ilk, lockAmount,
+                                        drawAmount, {promise});
   }
 
   wipeDai(amount) {
@@ -130,58 +101,39 @@ export default class ManagedCdp {
     return this._cdpManager.unsafeWipe(this.id, amount);
   }
 
-  wipeAll() {
-    return this._cdpManager.wipeAll(this.id, null);
-  }
+  wipeAll() { return this._cdpManager.wipeAll(this.id, null); }
 
-  unsafeWipeAll() {
-    return this._cdpManager.unsafeWipeAll(this.id);
-  }
+  unsafeWipeAll() { return this._cdpManager.unsafeWipeAll(this.id); }
 
-  freeCollateral(amount) {
-    return this.wipeAndFree(undefined, amount);
-  }
+  freeCollateral(amount) { return this.wipeAndFree(undefined, amount); }
 
-  give(address) {
-    return this._cdpManager.give(this.id, address);
-  }
+  give(address) { return this._cdpManager.give(this.id, address); }
 
   giveToProxy(address) {
     return this._cdpManager.giveToProxy(this.id, address);
   }
 
-  @tracksTransactionsWithOptions({ numArguments: 3 })
-  wipeAndFree(
-    wipeAmount = MDAI(0),
-    freeAmount = this.currency(0),
-    { promise }
-  ) {
+  @tracksTransactionsWithOptions({numArguments : 3})
+  wipeAndFree(wipeAmount = MDAI(0), freeAmount = this.currency(0), {promise}) {
     assert(wipeAmount && freeAmount, 'amounts must be defined');
     wipeAmount = castAsCurrency(wipeAmount, MDAI);
     freeAmount = castAsCurrency(freeAmount, this.currency);
-    return this._cdpManager.wipeAndFree(
-      this.id,
-      this.ilk,
-      wipeAmount,
-      freeAmount,
-      { promise }
-    );
+    return this._cdpManager.wipeAndFree(this.id, this.ilk, wipeAmount,
+                                        freeAmount, {promise});
   }
 
-  @tracksTransactionsWithOptions({ numArguments: 1 })
-  wipeAllAndFree(freeAmount = this.currency(0), { promise }) {
+  @tracksTransactionsWithOptions({numArguments : 1})
+  wipeAllAndFree(freeAmount = this.currency(0), {promise}) {
     assert(freeAmount, 'free amount must be defined');
     freeAmount = castAsCurrency(freeAmount, this.currency);
-    return this._cdpManager.wipeAllAndFree(this.id, this.ilk, freeAmount, {
-      promise
-    });
+    return this._cdpManager.wipeAllAndFree(this.id, this.ilk, freeAmount,
+                                           {promise});
   }
 
   _getUrnInfo() {
     if (!this._urnInfoPromise) {
-      this._urnInfoPromise = this._cdpManager
-        .getUrn(this.id)
-        .then(urn => this._cdpManager.vat.urns(stringToBytes(this.ilk), urn));
+      this._urnInfoPromise = this._cdpManager.getUrn(this.id).then(
+          urn => this._cdpManager.vat.urns(stringToBytes(this.ilk), urn));
     }
     return this._urnInfoPromise.then(value => {
       this.cache.urnInfo = value;
@@ -197,7 +149,7 @@ export default class ManagedCdp {
   prefetch() {
     // TODO allow passing in a multicall instance to use that instead of making
     // separate calls
-    return Promise.all([this._getUrnInfo(), this.type.prefetch()]);
+    return Promise.all([ this._getUrnInfo(), this.type.prefetch() ]);
   }
 
   reset() {

@@ -1,7 +1,8 @@
+import {createCurrencyRatio} from '@makerdao/currency';
 import BigNumber from 'bignumber.js';
-import { createCurrencyRatio } from '@makerdao/currency';
-import { RAY } from './constants';
-import { MDAI, USD } from './index';
+
+import {RAY} from './constants';
+import {MDAI, USD} from './index';
 
 // NOTE: When a function below has an argument with the same name as a function
 // defined earlier in the file, that means it expects that argument's value to
@@ -11,15 +12,10 @@ import { MDAI, USD } from './index';
 
 // ilk math
 
-export function debtCeiling(line) {
-  return MDAI.rad(line);
-}
+export function debtCeiling(line) { return MDAI.rad(line); }
 
 export function liquidationPenalty(chop) {
-  return new BigNumber(chop.toString())
-    .dividedBy(RAY)
-    .minus(1)
-    .toNumber();
+  return new BigNumber(chop.toString()).dividedBy(RAY).minus(1).toNumber();
 }
 
 export function liquidationRatio(mat) {
@@ -39,18 +35,13 @@ const secondsPerYear = 60 * 60 * 24 * 365;
 
 export function annualStabilityFee(duty) {
   duty = new BigNumber(duty.toString()).dividedBy(RAY);
-  BigNumber.config({ POW_PRECISION: 100 });
-  return duty
-    .pow(secondsPerYear)
-    .minus(1)
-    .toNumber();
+  BigNumber.config({POW_PRECISION : 100});
+  return duty.pow(secondsPerYear).minus(1).toNumber();
 }
 
 // cdp math
 
-export function collateralAmount(currency, ink) {
-  return currency.wei(ink);
-}
+export function collateralAmount(currency, ink) { return currency.wei(ink); }
 
 export function collateralValue(collateralAmount, price) {
   return collateralAmount.times(price);
@@ -69,11 +60,8 @@ export function collateralizationRatio(collateralValue, debtValue) {
   return collateralValue.div(debtValue);
 }
 
-export function liquidationPrice(
-  collateralAmount,
-  debtValue,
-  liquidationRatio
-) {
+export function liquidationPrice(collateralAmount, debtValue,
+                                 liquidationRatio) {
   if (collateralAmount.eq(0)) {
     const ratio = createCurrencyRatio(USD, collateralAmount.type);
     return ratio(Infinity);
@@ -88,6 +76,6 @@ export function minSafeCollateralAmount(debtValue, liquidationRatio, price) {
 export function daiAvailable(collateralValue, debtValue, liquidationRatio) {
   const maxSafeDebtValue = collateralValue.div(liquidationRatio);
   return debtValue.lt(maxSafeDebtValue)
-    ? MDAI(maxSafeDebtValue.minus(debtValue))
-    : MDAI(0);
+             ? MDAI(maxSafeDebtValue.minus(debtValue))
+             : MDAI(0);
 }

@@ -1,6 +1,6 @@
 import ServiceManager from './ServiceManager';
-import ServiceType from './ServiceType';
 import ServiceState from './ServiceState';
+import ServiceType from './ServiceType';
 
 /**
  * @param {string} type
@@ -36,28 +36,17 @@ function _defineLifeCycleMethods(type) {
  * @private
  */
 function _buildServiceManager(type, name, dependencies) {
-  const connect =
-    type === ServiceType.LOCAL
-      ? null
-      : disconnect => {
-          this.disconnect = disconnect;
-          return this.connect();
-        };
+  const connect = type === ServiceType.LOCAL ? null : disconnect => {
+    this.disconnect = disconnect;
+    return this.connect();
+  };
 
-  const auth =
-    type !== ServiceType.PRIVATE
-      ? null
-      : deauthenticate => {
-          this.deauthenticate = deauthenticate;
-          return this.authenticate();
-        };
+  const auth = type !== ServiceType.PRIVATE ? null : deauthenticate => {
+    this.deauthenticate = deauthenticate;
+    return this.authenticate();
+  };
   return new ServiceManager(
-    name,
-    dependencies,
-    settings => this.initialize(settings),
-    connect,
-    auth
-  );
+      name, dependencies, settings => this.initialize(settings), connect, auth);
 }
 
 /**
@@ -68,17 +57,13 @@ function _installLifeCycleHooks(mgr) {
   mgr.onInitialized(() => {
     if (mgr.type() !== ServiceType.LOCAL) {
       mgr.dependencies().forEach(d => {
-        this.get(d)
-          .manager()
-          .onDisconnected(() => this.disconnect());
+        this.get(d).manager().onDisconnected(() => this.disconnect());
       });
     }
 
     if (mgr.type() === ServiceType.PRIVATE) {
       mgr.dependencies().forEach(d => {
-        this.get(d)
-          .manager()
-          .onDeauthenticated(() => this.deauthenticate());
+        this.get(d).manager().onDeauthenticated(() => this.deauthenticate());
       });
     }
   });
@@ -89,31 +74,27 @@ function _installLifeCycleHooks(mgr) {
  */
 function _guardLifeCycleMethods() {
   const original = {
-    initialize: this.initialize,
-    connect: this.connect,
-    authenticate: this.authenticate
+    initialize : this.initialize,
+    connect : this.connect,
+    authenticate : this.authenticate
   };
 
   this.initialize = function(settings) {
     if (this.manager().state() !== ServiceState.INITIALIZING) {
       throw new Error(
-        'Expected state INITIALIZING, but got ' +
-          this.manager().state() +
-          '. Did you mean to call service.manager().initialize() instead of service.initialize()?'
-      );
+          'Expected state INITIALIZING, but got ' + this.manager().state() +
+          '. Did you mean to call service.manager().initialize() instead of service.initialize()?');
     }
 
-    return original.initialize.apply(this, [settings]);
+    return original.initialize.apply(this, [ settings ]);
   };
 
   if (typeof original.connect !== 'undefined') {
     this.connect = function() {
       if (this.manager().state() !== ServiceState.CONNECTING) {
         throw new Error(
-          'Expected state CONNECTING, but got ' +
-            this.manager().state() +
-            '. Did you mean to call service.manager().connect() instead of service.connect()?'
-        );
+            'Expected state CONNECTING, but got ' + this.manager().state() +
+            '. Did you mean to call service.manager().connect() instead of service.connect()?');
       }
 
       return original.connect.apply(this);
@@ -124,10 +105,8 @@ function _guardLifeCycleMethods() {
     this.authenticate = function() {
       if (this.manager().state() !== ServiceState.AUTHENTICATING) {
         throw new Error(
-          'Expected state AUTHENTICATING, but got ' +
-            this.manager().state() +
-            '. Did you mean to call service.manager().authenticate() instead of service.authenticate()?'
-        );
+            'Expected state AUTHENTICATING, but got ' + this.manager().state() +
+            '. Did you mean to call service.manager().authenticate() instead of service.authenticate()?');
       }
 
       return original.authenticate.apply(this);
@@ -142,7 +121,8 @@ class ServiceBase {
    * @param {string[]} dependencies
    */
   constructor(type, name, dependencies = []) {
-    if (!name) name = this.constructor.role;
+    if (!name)
+      name = this.constructor.role;
     if (this.constructor.dependencies) {
       dependencies = this.constructor.dependencies;
     }
@@ -152,12 +132,8 @@ class ServiceBase {
     }
 
     _defineLifeCycleMethods.call(this, type);
-    this._serviceManager = _buildServiceManager.call(
-      this,
-      type,
-      name,
-      dependencies
-    );
+    this._serviceManager =
+        _buildServiceManager.call(this, type, name, dependencies);
     _installLifeCycleHooks.call(this, this._serviceManager);
     _guardLifeCycleMethods.call(this);
   }
@@ -165,17 +141,13 @@ class ServiceBase {
   /**
    * @returns {ServiceManager}
    */
-  manager() {
-    return this._serviceManager;
-  }
+  manager() { return this._serviceManager; }
 
   /**
    * @param {string} dependency
    * @returns {ServiceBase}
    */
-  get(dependency) {
-    return this._serviceManager.dependency(dependency);
-  }
+  get(dependency) { return this._serviceManager.dependency(dependency); }
 }
 
 export default ServiceBase;

@@ -34,18 +34,15 @@ last object which contains a key named `promise`.
 const tracksTransactions = tracksTransactionsWithOptions({});
 export default tracksTransactions;
 
-export function tracksTransactionsWithOptions({ numArguments }) {
+export function tracksTransactionsWithOptions({numArguments}) {
   return (target, name, descriptor) => {
     const original = descriptor.value;
     const correctArgsLength = numArguments || original.length;
     descriptor.value = function(...args) {
       const last = args[args.length - 1];
       let options;
-      if (
-        typeof last === 'object' &&
-        last !== null &&
-        last.constructor === Object
-      ) {
+      if (typeof last === 'object' && last !== null &&
+          last.constructor === Object) {
         args = args.slice(0, args.length - 1);
         options = last;
       } else {
@@ -60,7 +57,8 @@ export function tracksTransactionsWithOptions({ numArguments }) {
         // if there's already a promise, reuse it instead of setting this one--
         // this allows the function we're running to behave differently when
         // it's called directly vs. by another function. e.g. lockWeth
-        if (!options.promise) options.promise = promise;
+        if (!options.promise)
+          options.promise = promise;
 
         // pad the list of arguments with `undefined` to account for any missing
         // ones with default values.

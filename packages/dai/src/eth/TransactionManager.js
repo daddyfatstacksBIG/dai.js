@@ -1,15 +1,18 @@
-import { PublicService } from '@makerdao/services-core';
-import TransactionObject from './TransactionObject';
-import { uniqueId } from '../utils';
+import {PublicService} from '@makerdao/services-core';
+import debug from 'debug';
 import each from 'lodash/each';
 import has from 'lodash/has';
-import { inspect } from 'util';
-import debug from 'debug';
+import {inspect} from 'util';
+
+import {uniqueId} from '../utils';
+
+import TransactionObject from './TransactionObject';
+
 const log = debug('dai:TransactionManager');
 
 export default class TransactionManager extends PublicService {
   constructor(name = 'transactionManager') {
-    super(name, ['web3', 'log', 'nonce', 'proxy', 'gas']);
+    super(name, [ 'web3', 'log', 'nonce', 'proxy', 'gas' ]);
     this._newTxListeners = [];
     this._tracker = new Tracker();
   }
@@ -17,16 +20,14 @@ export default class TransactionManager extends PublicService {
   // this method must not be async
   sendContractCall(contract, method, args, name) {
     log(`sendContractCall: ${name}.${method} ${inspect(args)}`);
-    if (!args) args = [];
-    let options,
-      promise,
-      businessObject,
-      metadata = {
-        contract: name,
-        method: method.replace(/\(.*\)$/g, ''),
-        args
-      },
-      lastArg = args[args.length - 1];
+    if (!args)
+      args = [];
+    let options, promise, businessObject, metadata = {
+      contract : name,
+      method : method.replace(/\(.*\)$/g, ''),
+      args
+    },
+                                          lastArg = args[args.length - 1];
 
     if (typeof lastArg === 'object' && lastArg.constructor === Object) {
       options = lastArg;
@@ -34,12 +35,13 @@ export default class TransactionManager extends PublicService {
 
       // append additional metadata to the default values.
       if (options.metadata) {
-        metadata = { ...metadata, ...options.metadata };
+        metadata = {...metadata, ...options.metadata};
         delete options.metadata;
       }
 
       if (has(options, 'promise')) {
-        if (options.promise) promise = options.promise;
+        if (options.promise)
+          promise = options.promise;
         delete options.promise;
       }
 
@@ -55,46 +57,35 @@ export default class TransactionManager extends PublicService {
     // _createTransactionObject, because that promise is the one stored for
     // lookup to attach lifecycle hooks.
     return this._createTransactionObject(
-      (async () => {
-        // so we do our async operations inside this immediately-executed
-        // async function.
-        const txOptions = await this._buildTransactionOptions(
-          options,
-          contract,
-          method,
-          args
-        );
-        return this._execute(contract, method, args, txOptions);
-      })(),
-      {
-        businessObject,
-        metadata,
-        promise
-      }
-    );
+        (async () => {
+          // so we do our async operations inside this immediately-executed
+          // async function.
+          const txOptions = await this._buildTransactionOptions(
+              options, contract, method, args);
+          return this._execute(contract, method, args, txOptions);
+        })(),
+        {businessObject, metadata, promise});
   }
 
   // this method must not be async
   sendTransaction(options, metadata) {
     return this._createTransactionObject(
-      (async () => {
-        const txOptions = await this._buildTransactionOptions(options);
-        return this.get('web3').sendTransaction(txOptions);
-      })(),
-      metadata
-    );
+        (async () => {
+          const txOptions = await this._buildTransactionOptions(options);
+          return this.get('web3').sendTransaction(txOptions);
+        })(),
+        metadata);
   }
 
-  onNewTransaction(cb) {
-    this._newTxListeners.push(cb);
-  }
+  onNewTransaction(cb) { this._newTxListeners.push(cb); }
 
   onTransactionUpdate(cb) {
     this._tracker._globalListeners.push(cb);
     return {
-      unsub: () => {
+      unsub : () => {
         const idx = this._tracker._globalListeners.indexOf(cb);
-        if (idx !== -1) this._tracker._globalListeners.splice(idx, 1);
+        if (idx !== -1)
+          this._tracker._globalListeners.splice(idx, 1);
       }
     };
   }
@@ -109,17 +100,15 @@ export default class TransactionManager extends PublicService {
     return Promise.all(txs.map(tx => tx.confirm(count)));
   }
 
-  isMined(promise) {
-    return this._tracker.get(uniqueId(promise)).isMined();
-  }
+  isMined(promise) { return this._tracker.get(uniqueId(promise)).isMined(); }
 
   listen(promise, handlers) {
     if (typeof handlers === 'function') {
       this._tracker.listen(uniqueId(promise), {
-        pending: tx => handlers(tx, 'pending'),
-        mined: tx => handlers(tx, 'mined'),
-        confirmed: tx => handlers(tx, 'confirmed'),
-        error: (tx, err) => handlers(tx, 'error', err)
+        pending : tx => handlers(tx, 'pending'),
+        mined : tx => handlers(tx, 'mined'),
+        confirmed : tx => handlers(tx, 'confirmed'),
+        error : (tx, err) => handlers(tx, 'error', err)
       });
     } else {
       this._tracker.listen(uniqueId(promise), handlers);
@@ -129,7 +118,8 @@ export default class TransactionManager extends PublicService {
   // if options.dsProxy is set, execute this contract method through the
   // proxy contract at that address.
   _execute(contract, method, args, options) {
-    if (!options.dsProxy) return contract[method](...args, options);
+    if (!options.dsProxy)
+      return contract[method](...args, options);
 
     let address;
     if (typeof options.dsProxy === 'string') {
@@ -140,11 +130,8 @@ export default class TransactionManager extends PublicService {
     return this.get('proxy').execute(contract, method, args, options, address);
   }
 
-  _createTransactionObject(tx, { businessObject, metadata, promise } = {}) {
-    const txo = new TransactionObject(tx, this, {
-      businessObject,
-      metadata
-    });
+  _createTransactionObject(tx, {businessObject, metadata, promise} = {}) {
+    const txo = new TransactionObject(tx, this, {businessObject, metadata});
 
     this._newTxListeners.forEach(cb => cb(txo));
 
@@ -161,21 +148,16 @@ export default class TransactionManager extends PublicService {
     // service method calls, e.g.
     // EthereumCdpService.lockEth -> WethToken.deposit.
     if (promise)
-      this._tracker.store(uniqueId(promise), txo, {
-        globalTxStateUpdates: false
-      });
+      this._tracker.store(uniqueId(promise), txo,
+                          {globalTxStateUpdates : false});
 
     return minePromise;
   }
 
   async _buildTransactionOptions(options, contract, method, args) {
     if (contract && !options.gasLimit) {
-      options.gasLimit = await this._getGasLimit(
-        options,
-        contract,
-        method,
-        args
-      );
+      options.gasLimit =
+          await this._getGasLimit(options, contract, method, args);
     }
 
     if (!this.get('gas').disablePrice) {
@@ -186,7 +168,7 @@ export default class TransactionManager extends PublicService {
     return {
       ...options,
       ...this.get('web3').transactionSettings(),
-      nonce: await this.get('nonce').getNonce()
+      nonce : await this.get('nonce').getNonce()
     };
   }
 
@@ -206,8 +188,8 @@ export default class TransactionManager extends PublicService {
     }
 
     transaction = {
-      from: this.get('web3').currentAddress(),
-      to: options.dsProxy ? proxyAddress : contract.address,
+      from : this.get('web3').currentAddress(),
+      to : options.dsProxy ? proxyAddress : contract.address,
       data,
       ...transaction
     };
@@ -217,7 +199,7 @@ export default class TransactionManager extends PublicService {
 }
 
 class Tracker {
-  static states = ['initialized', 'pending', 'mined', 'finalized', 'error'];
+  static states = [ 'initialized', 'pending', 'mined', 'finalized', 'error' ];
 
   constructor() {
     this._listeners = {};
@@ -225,29 +207,26 @@ class Tracker {
     this._transactions = {};
   }
 
-  store(key, tx, options = { globalTxStateUpdates: true }) {
+  store(key, tx, options = {globalTxStateUpdates : true}) {
     this._init(key);
     this._transactions[key].push(tx);
 
     for (let state of this.constructor.states) {
       tx.on(state, () => {
         if (options.globalTxStateUpdates) {
-          this._globalListeners.forEach(cb =>
-            tx.error ? cb(tx, state, tx.error) : cb(tx, state)
-          );
+          this._globalListeners.forEach(cb => tx.error ? cb(tx, state, tx.error)
+                                                       : cb(tx, state));
         }
-        this._listeners[key][state].forEach(cb =>
-          tx.error ? cb(tx, tx.error) : cb(tx)
-        );
+        this._listeners[key][state].forEach(cb => tx.error ? cb(tx, tx.error)
+                                                           : cb(tx));
       });
     }
 
     if (options.globalTxStateUpdates)
       this._globalListeners.forEach(cb => cb(tx, 'initialized'));
 
-    this._listeners[key].initialized.forEach(cb =>
-      tx.error ? cb(tx, tx.error) : cb(tx)
-    );
+    this._listeners[key].initialized.forEach(cb => tx.error ? cb(tx, tx.error)
+                                                            : cb(tx));
     this.clearExpiredTransactions();
   }
 
@@ -256,22 +235,18 @@ class Tracker {
 
     for (let state in handlers) {
       const cb = handlers[state];
-      if (state === 'confirmed') state = 'finalized';
+      if (state === 'confirmed')
+        state = 'finalized';
       this._listeners[key][state].push(cb);
 
       // if event has already happened, call handler immediately
       this._transactions[key].forEach(
-        tx =>
-          tx &&
-          tx.inOrPastState(state) &&
-          (tx.error ? cb(tx, tx.error) : cb(tx))
-      );
+          tx => tx && tx.inOrPastState(state) &&
+                (tx.error ? cb(tx, tx.error) : cb(tx)));
     }
   }
 
-  getAll(key) {
-    return this._transactions[key];
-  }
+  getAll(key) { return this._transactions[key]; }
 
   get(key) {
     const txs = this._transactions[key];
@@ -279,9 +254,8 @@ class Tracker {
       throw new Error(`No transactions for key ${key}`);
     }
     if (txs.length > 1) {
-      console.warn(
-        `Key ${key} matches ${txs.length} transactions; returning the first.`
-      );
+      console.warn(`Key ${key} matches ${
+          txs.length} transactions; returning the first.`);
     }
     return txs[0];
   }
@@ -290,8 +264,8 @@ class Tracker {
     each(this._transactions, (txList, key) => {
       txList.forEach(tx => {
         const txAge =
-          (new Date().getTime() - new Date(tx._timeStampMined).getTime()) /
-          60000;
+            (new Date().getTime() - new Date(tx._timeStampMined).getTime()) /
+            60000;
         if ((tx.isError() || tx.isFinalized()) && txAge > 5) {
           const indexToRemove = this._transactions[key].indexOf(tx);
           this._transactions[key].splice(indexToRemove, 1);
@@ -305,7 +279,8 @@ class Tracker {
   }
 
   _init(key) {
-    if (!this._transactions[key]) this._transactions[key] = [];
+    if (!this._transactions[key])
+      this._transactions[key] = [];
     if (!this._listeners[key]) {
       this._listeners[key] = this.constructor.states.reduce((acc, state) => {
         acc[state] = [];

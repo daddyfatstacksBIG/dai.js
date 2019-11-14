@@ -1,5 +1,5 @@
-import ServiceType from './ServiceType';
 import ServiceBase from './ServiceBase';
+import ServiceType from './ServiceType';
 
 /**
  *

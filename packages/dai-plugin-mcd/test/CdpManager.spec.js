@@ -1,22 +1,23 @@
+import {restoreSnapshot, takeSnapshot} from '@makerdao/test-helpers';
+import TestAccountProvider from
+    '@makerdao/test-helpers/src/TestAccountProvider';
 import findIndex from 'lodash/findIndex';
-import { mcdMaker, setupCollateral } from './helpers';
-import { setMethod, transferToBag } from '../src/CdpManager';
-import { ServiceRoles } from '../src/constants';
-import { ETH, MDAI, GNT, DGD, BAT } from '../src';
-import { dummyEventData, formattedDummyEventData } from './fixtures';
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
 
-import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
+import {BAT, DGD, ETH, GNT, MDAI} from '../src';
+import {setMethod, transferToBag} from '../src/CdpManager';
+import {ServiceRoles} from '../src/constants';
+
+import {dummyEventData, formattedDummyEventData} from './fixtures';
+import {mcdMaker, setupCollateral} from './helpers';
 
 let maker, cdpMgr, txMgr, snapshotData;
 
 beforeAll(async () => {
   maker = await mcdMaker({
-    cdpTypes: [
-      { currency: ETH, ilk: 'ETH-A' },
-      { currency: DGD, ilk: 'DGD-A', decimals: 9 },
-      { currency: GNT, ilk: 'GNT-A' },
-      { currency: BAT, ilk: 'BAT-A' }
+    cdpTypes : [
+      {currency : ETH, ilk : 'ETH-A'},
+      {currency : DGD, ilk : 'DGD-A', decimals : 9},
+      {currency : GNT, ilk : 'GNT-A'}, {currency : BAT, ilk : 'BAT-A'}
     ]
   });
   cdpMgr = maker.service(ServiceRoles.CDP_MANAGER);
@@ -24,9 +25,7 @@ beforeAll(async () => {
   snapshotData = await takeSnapshot(maker);
 });
 
-afterAll(async () => {
-  await restoreSnapshot(snapshotData, maker);
-});
+afterAll(async () => { await restoreSnapshot(snapshotData, maker); });
 
 test('getCdpIds gets empty CDP data from a proxy', async () => {
   const currentProxy = await maker.currentProxy();
@@ -43,12 +42,12 @@ test('getCdpIds gets all CDP data from the proxy', async () => {
   const cdps = await cdpMgr.getCdpIds(currentProxy);
 
   expect(cdps.length).toEqual(2);
-  expect(cdps).toContainEqual({ id: cdp1.id, ilk: cdp1.ilk });
-  expect(cdps).toContainEqual({ id: cdp2.id, ilk: cdp2.ilk });
+  expect(cdps).toContainEqual({id : cdp1.id, ilk : cdp1.ilk});
+  expect(cdps).toContainEqual({id : cdp2.id, ilk : cdp2.ilk});
 });
 
 test('getCombinedDebtValue', async () => {
-  await setupCollateral(maker, 'ETH-A', { price: 150, debtCeiling: 50 });
+  await setupCollateral(maker, 'ETH-A', {price : 150, debtCeiling : 50});
   await cdpMgr.openLockAndDraw('ETH-A', ETH(1), MDAI(3));
   await cdpMgr.openLockAndDraw('ETH-A', ETH(2), MDAI(5));
   cdpMgr.reset();
@@ -63,30 +62,27 @@ test('getCdp looks up ilk and has cache', async () => {
   expect(sameCdp.ilk).toEqual(cdp.ilk);
   expect(cdp).toBe(sameCdp);
 
-  const differentInstance = await cdpMgr.getCdp(cdp.id, { cache: false });
+  const differentInstance = await cdpMgr.getCdp(cdp.id, {cache : false});
   expect(differentInstance).not.toBe(cdp);
 });
 
 test('getCdp can disable prefetch', async () => {
   const cdp = await cdpMgr.open('ETH-A');
-  const sameCdp = await cdpMgr.getCdp(cdp.id, {
-    prefetch: false,
-    cache: false
-  });
+  const sameCdp =
+      await cdpMgr.getCdp(cdp.id, {prefetch : false, cache : false});
   expect(sameCdp._urnInfoPromise).toBeUndefined();
 });
 
 test('getCombinedEventHistory', async () => {
   const proxy = await maker.currentProxy();
   const mockFn = jest.fn(async () => dummyEventData('ETH-A'));
-  maker.service(
-    ServiceRoles.QUERY_API
-  ).getCdpEventsForArrayOfIlksAndUrns = mockFn;
+  maker.service(ServiceRoles.QUERY_API).getCdpEventsForArrayOfIlksAndUrns =
+      mockFn;
   const events = await cdpMgr.getCombinedEventHistory(proxy);
   expect(mockFn).toBeCalled();
-  const GEM = maker
-    .service(ServiceRoles.CDP_TYPE)
-    .getCdpType(null, events[0].ilk).currency;
+  const GEM = maker.service(ServiceRoles.CDP_TYPE)
+                  .getCdpType(null, events[0].ilk)
+                  .currency;
   expect(events).toEqual(formattedDummyEventData(GEM, events[0].ilk));
 });
 
@@ -96,13 +92,11 @@ test('transaction tracking for openLockAndDraw', async () => {
   const open = cdpMgr.openLockAndDraw('ETH-A', ETH(1), MDAI(0));
   expect.assertions(5);
   const handlers = {
-    pending: jest.fn(({ metadata: { contract, method } }) => {
+    pending : jest.fn(({metadata : {contract, method}}) => {
       expect(contract).toBe('PROXY_ACTIONS');
       expect(method).toBe('openLockETHAndDraw');
     }),
-    mined: jest.fn(tx => {
-      expect(tx.hash).toBeTruthy();
-    })
+    mined : jest.fn(tx => { expect(tx.hash).toBeTruthy(); })
   };
   txMgr.listen(open, handlers);
   await open;
@@ -127,10 +121,9 @@ test('set method correctly', () => {
 test('transferToBag for GNT CDPs', async () => {
   const gntToken = maker.service('token').getToken(GNT);
   const proxyAddress = await maker.service('proxy').currentProxy();
-  const bagAddress = await maker
-    .service('smartContract')
-    .getContract('MCD_JOIN_GNT_A')
-    .bags(proxyAddress);
+  const bagAddress = await maker.service('smartContract')
+                         .getContract('MCD_JOIN_GNT_A')
+                         .bags(proxyAddress);
 
   const startingBalance = await gntToken.balanceOf(bagAddress);
   await transferToBag(GNT(1), proxyAddress, cdpMgr);
@@ -145,14 +138,12 @@ describe('using a different account', () => {
 
   beforeAll(async () => {
     const account2 = TestAccountProvider.nextAccount();
-    await maker.addAccount({ ...account2, type: 'privateKey' });
+    await maker.addAccount({...account2, type : 'privateKey'});
     maker.useAccount(account2.address);
     mgr = maker.service(ServiceRoles.CDP_MANAGER);
   });
 
-  afterAll(() => {
-    maker.useAccount('default');
-  });
+  afterAll(() => { maker.useAccount('default'); });
 
   test('create proxy during open', async () => {
     expect(await maker.currentProxy()).toBeFalsy();
@@ -161,22 +152,22 @@ describe('using a different account', () => {
     const handler = jest.fn((tx, state) => {
       const label = tx.metadata.contract + '.' + tx.metadata.method;
       switch (handler.mock.calls.length) {
-        case 1:
-          expect(state).toBe('pending');
-          expect(label).toBe('PROXY_REGISTRY.build');
-          break;
-        case 2:
-          expect(state).toBe('mined');
-          expect(label).toBe('PROXY_REGISTRY.build');
-          break;
-        case 3:
-          expect(state).toBe('pending');
-          expect(label).toBe('PROXY_ACTIONS.openLockETHAndDraw');
-          break;
-        case 4:
-          expect(state).toBe('mined');
-          expect(label).toBe('PROXY_ACTIONS.openLockETHAndDraw');
-          break;
+      case 1:
+        expect(state).toBe('pending');
+        expect(label).toBe('PROXY_REGISTRY.build');
+        break;
+      case 2:
+        expect(state).toBe('mined');
+        expect(label).toBe('PROXY_REGISTRY.build');
+        break;
+      case 3:
+        expect(state).toBe('pending');
+        expect(label).toBe('PROXY_ACTIONS.openLockETHAndDraw');
+        break;
+      case 4:
+        expect(state).toBe('mined');
+        expect(label).toBe('PROXY_ACTIONS.openLockETHAndDraw');
+        break;
       }
     });
     txMgr.listen(open, handler);
@@ -200,17 +191,17 @@ describe('using a different account', () => {
 });
 
 test('get event history via web3', async () => {
-  await setupCollateral(maker, 'ETH-A', { price: 150, debtCeiling: 50 });
+  await setupCollateral(maker, 'ETH-A', {price : 150, debtCeiling : 50});
   const cdp = await cdpMgr.openLockAndDraw('ETH-A', ETH(1), MDAI(3));
   await cdp.freeCollateral(ETH(0.5));
   await cdpMgr.give(cdp.id, '0x1000000000000000000000000000000000000000');
   const events = await cdpMgr.getEventHistory(cdp);
 
-  const openEventIdx = findIndex(events, { type: 'OPEN', id: cdp.id });
-  const depositEventIdx = findIndex(events, { type: 'DEPOSIT', id: cdp.id });
-  const generateEventIdx = findIndex(events, { type: 'GENERATE', id: cdp.id });
-  const withdrawEventIdx = findIndex(events, { type: 'WITHDRAW', id: cdp.id });
-  const giveEventIdx = findIndex(events, { type: 'GIVE', id: cdp.id });
+  const openEventIdx = findIndex(events, {type : 'OPEN', id : cdp.id});
+  const depositEventIdx = findIndex(events, {type : 'DEPOSIT', id : cdp.id});
+  const generateEventIdx = findIndex(events, {type : 'GENERATE', id : cdp.id});
+  const withdrawEventIdx = findIndex(events, {type : 'WITHDRAW', id : cdp.id});
+  const giveEventIdx = findIndex(events, {type : 'GIVE', id : cdp.id});
 
   expect(openEventIdx).toBeGreaterThan(-1);
   expect(events[openEventIdx].ilk).toEqual('ETH-A');
@@ -230,14 +221,11 @@ test('get event history via web3', async () => {
   expect(events[withdrawEventIdx].amount).toEqual('0.5');
 
   expect(giveEventIdx).toBeGreaterThan(-1);
-  expect(events[giveEventIdx].newOwner).toEqual(
-    '0x1000000000000000000000000000000000000000'
-  );
+  expect(events[giveEventIdx].newOwner)
+      .toEqual('0x1000000000000000000000000000000000000000');
 
   const cachedEvents = await cdpMgr.getEventHistory(cdp);
-  const openCachedEventIdx = findIndex(cachedEvents, {
-    type: 'OPEN',
-    id: cdp.id
-  });
+  const openCachedEventIdx =
+      findIndex(cachedEvents, {type : 'OPEN', id : cdp.id});
   expect(openCachedEventIdx).toBeGreaterThan(-1);
 });
