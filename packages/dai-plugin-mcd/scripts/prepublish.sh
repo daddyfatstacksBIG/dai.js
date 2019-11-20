@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $(basename $(pwd)) != "dai-plugin-mcd" ]; then
+if [ "$(basename "$PWD")" != "dai-plugin-mcd" ]; then
   echo "This script must be run from the dai-plugin-mcd directory."
   exit
 fi

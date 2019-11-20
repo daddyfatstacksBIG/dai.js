@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ $(basename $(pwd)) != "dai" ]; then
+if [ "$(basename "$PWD")" != "dai" ]; then
   echo "This script must be run from the dai directory."
   exit
 fi
