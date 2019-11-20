@@ -1,6 +1,9 @@
-import { tracksTransactionsWithOptions } from '@makerdao/dai/dist/src/utils/tracksTransactions';
-import { getIdBytes, stringToBytes } from '../utils';
-import { SAI, MKR } from '..';
+import {
+  tracksTransactionsWithOptions
+} from '@makerdao/dai/dist/src/utils/tracksTransactions';
+
+import {MKR, SAI} from '..';
+import {getIdBytes, stringToBytes} from '../utils';
 
 export default class SingleToMultiCdp {
   constructor(manager) {
@@ -14,30 +17,24 @@ export default class SingleToMultiCdp {
     const idsFromProxy = await this._manager.get('cdp').getCdpIds(proxyAddress);
     const idsFromAddress = await this._manager.get('cdp').getCdpIds(address);
     return idsFromProxy.length + idsFromAddress.length > 0
-      ? { [proxyAddress]: idsFromProxy, [address]: idsFromAddress }
-      : {};
+               ? {[proxyAddress] : idsFromProxy, [address] : idsFromAddress}
+               : {};
   }
 
-  @tracksTransactionsWithOptions({ numArguments: 5 })
-  async execute(cupId, payment = 'MKR', maxPayAmount, minRatio, { promise }) {
-    const migrationProxy = this._manager
-      .get('smartContract')
-      .getContract('MIGRATION_PROXY_ACTIONS');
-    const migration = this._manager
-      .get('smartContract')
-      .getContract('MIGRATION');
-    const defaultArgs = [migration.address, getIdBytes(cupId)];
-    const { method, args } = this._setMethodAndArgs(
-      payment,
-      defaultArgs,
-      maxPayAmount,
-      minRatio
-    );
+  @tracksTransactionsWithOptions({numArguments : 5})
+  async execute(cupId, payment = 'MKR', maxPayAmount, minRatio, {promise}) {
+    const migrationProxy = this._manager.get('smartContract')
+                               .getContract('MIGRATION_PROXY_ACTIONS');
+    const migration =
+        this._manager.get('smartContract').getContract('MIGRATION');
+    const defaultArgs = [ migration.address, getIdBytes(cupId) ];
+    const {method, args} =
+        this._setMethodAndArgs(payment, defaultArgs, maxPayAmount, minRatio);
 
-    if (payment !== 'DEBT') await this._requireAllowance(cupId, payment);
-    return migrationProxy[method](...args, { dsProxy: true, promise }).then(
-      txo => this._manager.get('mcd:cdpManager').getNewCdpId(txo)
-    );
+    if (payment !== 'DEBT')
+      await this._requireAllowance(cupId, payment);
+    return migrationProxy[method](...args, {dsProxy : true, promise})
+        .then(txo => this._manager.get('mcd:cdpManager').getNewCdpId(txo));
   }
 
   async _requireAllowance(cupId, payment) {
@@ -59,36 +56,28 @@ export default class SingleToMultiCdp {
   }
 
   _setMethodAndArgs(payment, defaultArgs, maxPayAmount, minRatio) {
-    const otc = this._manager.get('smartContract').getContract('MAKER_OTC')
-      .address;
+    const otc =
+        this._manager.get('smartContract').getContract('MAKER_OTC').address;
 
     if (payment === 'GEM') {
-      const gem = this._manager
-        .get('token')
-        .getToken('DAI')
-        .address();
+      const gem = this._manager.get('token').getToken('DAI').address();
       return {
-        method: 'migratePayFeeWithGem',
-        args: [...defaultArgs, otc, gem, SAI(maxPayAmount).toFixed('wei')]
+        method : 'migratePayFeeWithGem',
+        args : [...defaultArgs, otc, gem, SAI(maxPayAmount).toFixed('wei') ]
       };
     }
 
     if (payment === 'DEBT') {
       return {
-        method: 'migratePayFeeWithDebt',
-        args: [
-          ...defaultArgs,
-          otc,
-          SAI(maxPayAmount).toFixed('wei'),
+        method : 'migratePayFeeWithDebt',
+        args : [
+          ...defaultArgs, otc, SAI(maxPayAmount).toFixed('wei'),
           SAI(minRatio).toFixed('wei')
         ]
       };
     }
 
-    return {
-      method: 'migrate',
-      args: defaultArgs
-    };
+    return {method : 'migrate', args : defaultArgs};
   }
 
   // the Sai available is the smaller of two values:
@@ -96,9 +85,8 @@ export default class SingleToMultiCdp {
   //  - the debt ceiling for the ETH-A ilk in MCD
   async migrationSaiAvailable() {
     const vat = this._manager.get('smartContract').getContract('MCD_VAT_1');
-    const migrationContractAddress = this._manager
-      .get('smartContract')
-      .getContract('MIGRATION').address;
+    const migrationContractAddress =
+        this._manager.get('smartContract').getContract('MIGRATION').address;
 
     const ethA = this._manager.get('mcd:cdpType').getCdpType(null, 'ETH-A');
     ethA.reset();
@@ -106,7 +94,8 @@ export default class SingleToMultiCdp {
     const [migrationCdp, debtHeadroom] = await Promise.all([
       vat.urns(stringToBytes('SAI'), migrationContractAddress),
       ethA.prefetch().then(() => {
-        if (ethA.debtCeiling.toNumber() === 0) return SAI(0);
+        if (ethA.debtCeiling.toNumber() === 0)
+          return SAI(0);
         return SAI(ethA.debtCeiling.minus(ethA.totalDebt));
       })
     ]);
@@ -115,25 +104,21 @@ export default class SingleToMultiCdp {
     // cannot be 0. but it will be close enough that the migration contract will
     // not be able to free only the last 1 wei of sai
     let lockedSai = SAI.wei(migrationCdp.ink);
-    if (lockedSai.gt(0)) lockedSai = lockedSai.minus(SAI.wei(1));
+    if (lockedSai.gt(0))
+      lockedSai = lockedSai.minus(SAI.wei(1));
 
     return debtHeadroom.lt(lockedSai) ? debtHeadroom : lockedSai;
   }
 
   async saiAmountNeededToBuyMkr(mkrAmount) {
-    const otcContract = this._manager
-      .get('smartContract')
-      .getContract('MAKER_OTC');
+    const otcContract =
+        this._manager.get('smartContract').getContract('MAKER_OTC');
     return otcContract
-      .getPayAmount(
-        this._getToken(SAI).address(),
-        this._getToken(MKR).address(),
-        MKR(mkrAmount).toFixed('wei')
-      )
-      .then(a => SAI.wei(a));
+        .getPayAmount(this._getToken(SAI).address(),
+                      this._getToken(MKR).address(),
+                      MKR(mkrAmount).toFixed('wei'))
+        .then(a => SAI.wei(a));
   }
 
-  _getToken(symbol) {
-    return this._manager.get('token').getToken(symbol);
-  }
+  _getToken(symbol) { return this._manager.get('token').getToken(symbol); }
 }

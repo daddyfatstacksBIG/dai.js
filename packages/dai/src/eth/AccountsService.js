@@ -1,27 +1,29 @@
-import { PublicService } from '@makerdao/services-core';
+import {PublicService} from '@makerdao/services-core';
+import assert from 'assert';
+import invariant from 'invariant';
 import map from 'lodash/fp/map';
 import omit from 'lodash/fp/omit';
 import pick from 'lodash/fp/pick';
-import invariant from 'invariant';
-import {
-  privateKeyAccountFactory,
-  providerAccountFactory,
-  browserProviderAccountFactory
-} from './accounts/factories';
-import { setupEngine } from './accounts/setup';
-import { AccountType } from '../utils/constants';
-import assert from 'assert';
 
-const sanitizeAccount = pick(['name', 'type', 'address']);
+import {AccountType} from '../utils/constants';
+
+import {
+  browserProviderAccountFactory,
+  privateKeyAccountFactory,
+  providerAccountFactory
+} from './accounts/factories';
+import {setupEngine} from './accounts/setup';
+
+const sanitizeAccount = pick([ 'name', 'type', 'address' ]);
 
 export default class AccountsService extends PublicService {
   constructor(name = 'accounts') {
-    super(name, ['log', 'event']);
+    super(name, [ 'log', 'event' ]);
     this._accounts = {};
     this._accountFactories = {
-      privateKey: privateKeyAccountFactory,
-      provider: providerAccountFactory,
-      browser: browserProviderAccountFactory
+      privateKey : privateKeyAccountFactory,
+      provider : providerAccountFactory,
+      browser : browserProviderAccountFactory
     };
   }
 
@@ -39,20 +41,16 @@ export default class AccountsService extends PublicService {
       await this.addAccount(name, this._settings[name]);
     }
     if (accountNames.length === 0) {
-      await this.addAccount('default', { type: AccountType.PROVIDER });
+      await this.addAccount('default', {type : AccountType.PROVIDER});
     }
     this._engine.start();
   }
 
-  getProvider() {
-    return this._engine;
-  }
+  getProvider() { return this._engine; }
 
   addAccountType(type, factory) {
-    invariant(
-      !this._accountFactories[type],
-      `Account type "${type}" is already defined`
-    );
+    invariant(!this._accountFactories[type],
+              `Account type "${type}" is already defined`);
     this._accountFactories[type] = factory;
   }
 
@@ -61,7 +59,7 @@ export default class AccountsService extends PublicService {
       options = name;
       name = null;
     }
-    const { type, autoSwitch, ...otherSettings } = options;
+    const {type, autoSwitch, ...otherSettings} = options;
     invariant(this._engine, 'engine must be set up before adding an account');
     if (name && this._accounts[name]) {
       throw new Error('An account with this name already exists.');
@@ -82,50 +80,42 @@ export default class AccountsService extends PublicService {
       throw new Error('An account with this address already exists.');
     }
 
-    if (!name) name = accountData.address;
-    const account = {
-      name,
-      type,
-      autoSwitch: autoSwitch || false,
-      ...accountData
-    };
+    if (!name)
+      name = accountData.address;
+    const account =
+        {name, type, autoSwitch : autoSwitch || false, ...accountData};
 
     this._accounts[name] = account;
     if (!this._currentAccount || name === 'default') {
       this.useAccount(name);
     }
     if (this.hasAccount()) {
-      this.get('event').emit('accounts/ADD', {
-        account: sanitizeAccount(account)
-      });
+      this.get('event').emit('accounts/ADD',
+                             {account : sanitizeAccount(account)});
     }
 
     return account;
   }
 
-  listAccounts() {
-    return map(sanitizeAccount, this._accounts);
-  }
+  listAccounts() { return map(sanitizeAccount, this._accounts); }
 
   useAccount(name) {
     const account = this._accounts[name];
     invariant(account, `No account found with name "${name}".`);
 
-    if (this._autoSwitchCheckHandle) clearInterval(this._autoSwitchCheckHandle);
+    if (this._autoSwitchCheckHandle)
+      clearInterval(this._autoSwitchCheckHandle);
 
     if (account.type === AccountType.BROWSER) {
-      assert(
-        isAddressSelected(account.address),
-        'cannot use a browser account that is not currently selected'
-      );
+      assert(isAddressSelected(account.address),
+             'cannot use a browser account that is not currently selected');
       // detect account change and automatically switch active account if
       // autoSwitch flag set (useful if using a browser wallet like MetaMask)
-      // see: https://github.com/MetaMask/faq/blob/master/DEVELOPERS.md#ear-listening-for-selected-account-changes
+      // see:
+      // https://github.com/MetaMask/faq/blob/master/DEVELOPERS.md#ear-listening-for-selected-account-changes
       if (account.autoSwitch) {
         this._autoSwitchCheckHandle = setInterval(
-          this._autoSwitchCheckAccountChange(account.address),
-          500
-        );
+            this._autoSwitchCheckAccountChange(account.address), 500);
       }
     }
 
@@ -139,9 +129,8 @@ export default class AccountsService extends PublicService {
     this._engine.addProvider(this.currentWallet(), 0);
     this._engine.start();
     if (this.hasAccount()) {
-      this.get('event').emit('accounts/CHANGE', {
-        account: this.currentAccount()
-      });
+      this.get('event').emit('accounts/CHANGE',
+                             {account : this.currentAccount()});
     }
   }
 
@@ -150,10 +139,8 @@ export default class AccountsService extends PublicService {
       const activeBrowserAddress = getSelectedAddress().toLowerCase();
       if (activeBrowserAddress !== addr) {
         if (!this._getAccountWithAddress(activeBrowserAddress)) {
-          await this.addAccount({
-            type: AccountType.BROWSER,
-            autoSwitch: true
-          });
+          await this.addAccount(
+              {type : AccountType.BROWSER, autoSwitch : true});
         }
         this.useAccountWithAddress(activeBrowserAddress);
       }
@@ -162,25 +149,22 @@ export default class AccountsService extends PublicService {
 
   _getAccountWithAddress(addr) {
     const accountObjects = Object.values(this._accounts);
-    return accountObjects.find(
-      e => e.address.toUpperCase() === addr.toUpperCase()
-    );
+    return accountObjects.find(e => e.address.toUpperCase() ===
+                                    addr.toUpperCase());
   }
 
   useAccountWithAddress(addr) {
     const account = this._getAccountWithAddress(addr);
-    if (!account) throw new Error(`No account found with address ${addr}`);
+    if (!account)
+      throw new Error(`No account found with address ${addr}`);
     this.useAccount(account.name);
   }
 
-  hasAccount() {
-    return !!this._currentAccount;
-  }
+  hasAccount() { return !!this._currentAccount; }
 
   hasNonProviderAccount() {
-    return (
-      this.hasAccount() && this.currentAccount().type != AccountType.PROVIDER
-    );
+    return (this.hasAccount() &&
+            this.currentAccount().type != AccountType.PROVIDER);
   }
 
   // we intentionally omit subprovider (implementation detail) and privateKey
@@ -195,15 +179,13 @@ export default class AccountsService extends PublicService {
     return this._accounts[this._currentAccount].address;
   }
 
-  currentWallet() {
-    return this._accounts[this._currentAccount].subprovider;
-  }
+  currentWallet() { return this._accounts[this._currentAccount].subprovider; }
 }
 
 function getSelectedAddress() {
   return typeof window.ethereum !== 'undefined'
-    ? window.ethereum.selectedAddress
-    : window.web3.eth.defaultAccount;
+             ? window.ethereum.selectedAddress
+             : window.web3.eth.defaultAccount;
 }
 
 function isAddressSelected(address) {
