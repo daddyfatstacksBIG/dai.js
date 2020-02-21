@@ -1,15 +1,16 @@
-import TestAccountProvider from
-    '@makerdao/test-helpers/src/TestAccountProvider';
+import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
 
-import Maker, {ETH, LocalService} from '../src/index';
+import Maker, { ETH, LocalService } from '../src/index';
 
 const Maker2 = require('../src/index');
 
 async function createMaker(privateKey) {
-  return await Maker.create('test', {privateKey, log : false});
+  return await Maker.create('test', { privateKey, log: false });
 }
 
-test('create without any options', async () => { await Maker.create('test'); });
+test('create without any options', async () => {
+  await Maker.create('test');
+});
 
 test('import vs require', () => {
   expect(Maker2).toEqual(Maker);
@@ -57,15 +58,18 @@ test('throws an error for an invalid id', async () => {
   }
 });
 
-test('exports currency types',
-     () => { expect(Maker.ETH(1).toString()).toEqual('1.00 ETH'); });
+test('exports currency types', () => {
+  expect(Maker.ETH(1).toString()).toEqual('1.00 ETH');
+});
 
 test('injected provider is called', async () => {
   expect.assertions(3);
   const mockSend = jest.fn((payload, callback) => callback(payload));
-  const mockProvider = {sendAsync : mockSend, send : mockSend};
-  const maker = await Maker.create(
-      'inject', {provider : {inject : mockProvider}, autoAuthenticate : false});
+  const mockProvider = { sendAsync: mockSend, send: mockSend };
+  const maker = await Maker.create('inject', {
+    provider: { inject: mockProvider },
+    autoAuthenticate: false
+  });
   expect(mockSend).not.toBeCalled();
 
   try {
@@ -79,13 +83,17 @@ test('injected provider is called', async () => {
 
 test('smartContract.addressOverrides can override plugins', async () => {
   const maker = await Maker.create('test', {
-    plugins : [ {
-      addConfig : () => ({
-        smartContract : {addContracts : {FOO : {address : '0xfoo', abi : []}}}
-      })
-    } ],
-    smartContract : {addressOverrides : {FOO : '0xfoo2'}},
-    log : false
+    plugins: [
+      {
+        addConfig: () => ({
+          smartContract: {
+            addContracts: { FOO: { address: '0xfoo', abi: [] } }
+          }
+        })
+      }
+    ],
+    smartContract: { addressOverrides: { FOO: '0xfoo2' } },
+    log: false
   });
 
   // addressOverrides should be able to modify contracts added by plugins

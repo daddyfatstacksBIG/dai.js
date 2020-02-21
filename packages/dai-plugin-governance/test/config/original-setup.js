@@ -1,4 +1,4 @@
-import {takeSnapshotOriginal} from '../helpers';
+import { takeSnapshotOriginal } from '../helpers';
 
 beforeAll(async done => {
   global.useOldChain = true;

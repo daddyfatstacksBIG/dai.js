@@ -2,9 +2,9 @@
 // > node_modules/.bin/babel-node packages/test-helpers/scripts/generateDai.js
 // <address> <daiAmount>
 
-import {ETH, MDAI} from '@makerdao/dai-plugin-mcd/src/index';
-import {mcdMaker} from '@makerdao/dai-plugin-mcd/test/helpers';
-import {isAddress} from 'web3-utils';
+import { ETH, MDAI } from '@makerdao/dai-plugin-mcd/src/index';
+import { mcdMaker } from '@makerdao/dai-plugin-mcd/test/helpers';
+import { isAddress } from 'web3-utils';
 
 async function main() {
   const maker = await mcdMaker();
@@ -22,8 +22,8 @@ async function main() {
   await cdpMgr.openLockAndDraw('ETH-A', ETH(1), MDAI(amount));
 
   const dai = cdpMgr.get('token').getToken(MDAI);
-  const balance = await dai.balanceOf(address)
-  console.log(`Balance of ${address}: ${balance}`)
+  const balance = await dai.balanceOf(address);
+  console.log(`Balance of ${address}: ${balance}`);
 }
 
 (async fn => {

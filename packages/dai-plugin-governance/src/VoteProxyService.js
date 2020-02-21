@@ -1,14 +1,16 @@
-import {LocalService} from '@makerdao/services-core';
+import { LocalService } from '@makerdao/services-core';
 
 import voteProxyAbi from '../contracts/abis/VoteProxy.json';
 
-import {MKR, VOTE_PROXY_FACTORY, ZERO_ADDRESS} from './utils/constants';
+import { MKR, VOTE_PROXY_FACTORY, ZERO_ADDRESS } from './utils/constants';
 // maybe a "dai.js developer utils" package is useful?
-import {getCurrency} from './utils/helpers';
+import { getCurrency } from './utils/helpers';
 import VoteProxy from './VoteProxy';
 
 export default class VoteProxyService extends LocalService {
-  constructor(name = 'voteProxy') { super(name, [ 'smartContract', 'chief' ]); }
+  constructor(name = 'voteProxy') {
+    super(name, ['smartContract', 'chief']);
+  }
 
   // Writes -----------------------------------------------
 
@@ -22,7 +24,9 @@ export default class VoteProxyService extends LocalService {
     return this._proxyContract(proxyAddress).free(mkrAmt);
   }
 
-  freeAll(proxyAddress) { return this._proxyContract(proxyAddress).freeAll(); }
+  freeAll(proxyAddress) {
+    return this._proxyContract(proxyAddress).freeAll();
+  }
 
   voteExec(proxyAddress, picks) {
     if (Array.isArray(picks))
@@ -38,19 +42,21 @@ export default class VoteProxyService extends LocalService {
   }
 
   async getVoteProxy(addressToCheck) {
-    const {hasProxy, role, address : proxyAddress} =
-        await this._getProxyStatus(addressToCheck);
-    if (!hasProxy)
-      return {hasProxy, voteProxy : null};
+    const {
+      hasProxy,
+      role,
+      address: proxyAddress
+    } = await this._getProxyStatus(addressToCheck);
+    if (!hasProxy) return { hasProxy, voteProxy: null };
     const otherRole = role === 'hot' ? 'cold' : 'hot';
     const otherAddress = await this._getAddressOfRole(proxyAddress, otherRole);
     return {
       hasProxy,
-      voteProxy : new VoteProxy({
-        voteProxyService : this,
+      voteProxy: new VoteProxy({
+        voteProxyService: this,
         proxyAddress,
-        [`${role}Address`] : addressToCheck,
-        [`${otherRole}Address`] : otherAddress
+        [`${role}Address`]: addressToCheck,
+        [`${otherRole}Address`]: otherAddress
       })
     };
   }
@@ -58,8 +64,10 @@ export default class VoteProxyService extends LocalService {
   // Internal --------------------------------------------
 
   _proxyContract(address) {
-    return this.get('smartContract')
-        .getContractByAddressAndAbi(address, voteProxyAbi);
+    return this.get('smartContract').getContractByAddressAndAbi(
+      address,
+      voteProxyAbi
+    );
   }
 
   _proxyFactoryContract() {
@@ -72,25 +80,26 @@ export default class VoteProxyService extends LocalService {
       this._proxyFactoryContract().hotMap(address)
     ]);
     if (proxyAddressCold !== ZERO_ADDRESS)
-      return {role : 'cold', address : proxyAddressCold, hasProxy : true};
+      return { role: 'cold', address: proxyAddressCold, hasProxy: true };
     if (proxyAddressHot !== ZERO_ADDRESS)
-      return {role : 'hot', address : proxyAddressHot, hasProxy : true};
-    return {role : null, address : '', hasProxy : false};
+      return { role: 'hot', address: proxyAddressHot, hasProxy: true };
+    return { role: null, address: '', hasProxy: false };
   }
 
   _getAddressOfRole(proxyAddress, role) {
-    if (role === 'hot')
-      return this._proxyContract(proxyAddress).hot();
-    else if (role === 'cold')
-      return this._proxyContract(proxyAddress).cold();
+    if (role === 'hot') return this._proxyContract(proxyAddress).hot();
+    else if (role === 'cold') return this._proxyContract(proxyAddress).cold();
     return null;
   }
 }
 
 // add a few Chief Service methods to the Vote Proxy Service
-Object.assign(VoteProxyService.prototype,
-              [ 'getVotedSlate', 'getNumDeposits' ].reduce((acc, name) => {
-                acc[name] = function(
-                    ...args) { return this.get('chief')[name](...args); };
-                return acc;
-              }, {}));
+Object.assign(
+  VoteProxyService.prototype,
+  ['getVotedSlate', 'getNumDeposits'].reduce((acc, name) => {
+    acc[name] = function(...args) {
+      return this.get('chief')[name](...args);
+    };
+    return acc;
+  }, {})
+);

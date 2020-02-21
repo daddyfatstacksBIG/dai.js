@@ -1,6 +1,6 @@
 import BigNumber from 'bignumber.js';
 
-import {parseWeiNumeric} from '../src/utils';
+import { parseWeiNumeric } from '../src/utils';
 
 test('parseWeiNumeric', () => {
   expect(typeof parseWeiNumeric(1)).toBe('string');

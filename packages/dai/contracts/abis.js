@@ -38,9 +38,9 @@ const dappHub = {
   dsProxy
 };
 
-const exchangesV1 = {makerOtc};
+const exchangesV1 = { makerOtc };
 
-const general = {erc20};
+const general = { erc20 };
 
 const proxies = {
   oasisProxy,
@@ -49,4 +49,4 @@ const proxies = {
   proxyRegistry
 };
 
-export {daiV1, dappHub, exchangesV1, general, proxies, multicall};
+export { daiV1, dappHub, exchangesV1, general, proxies, multicall };

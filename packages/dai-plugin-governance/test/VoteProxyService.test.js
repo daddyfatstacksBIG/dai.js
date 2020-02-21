@@ -20,8 +20,9 @@ beforeAll(async () => {
   voteProxyService = maker.service('voteProxy');
   chiefService = maker.service('chief');
 
-  addresses = maker.listAccounts().reduce(
-      (acc, cur) => ({...acc, [cur.name] : cur.address}), {});
+  addresses = maker
+    .listAccounts()
+    .reduce((acc, cur) => ({ ...acc, [cur.name]: cur.address }), {});
 
   await linkAccounts(maker, addresses.ali, addresses.ava);
 });
@@ -53,7 +54,7 @@ test('can lock an amount of MKR', async () => {
 
   maker.useAccount('ali');
 
-  const {voteProxy} = await voteProxyService.getVoteProxy(addresses.ali);
+  const { voteProxy } = await voteProxyService.getVoteProxy(addresses.ali);
 
   const vpAddress = voteProxy.getProxyAddress();
 
@@ -69,38 +70,39 @@ test('can lock an amount of MKR', async () => {
   expect(postLockDeposits.toNumber()).toBe(amountToLock);
 });
 
-test('can cast an executive vote and retrieve voted on addresses from slate',
-     async () => {
-       const {voteProxy} = await voteProxyService.getVoteProxy(addresses.ali);
-       const vpAddress = voteProxy.getProxyAddress();
-       const picks = [
-         '0x26EC003c72ebA27749083d588cdF7EBA665c0A1D',
-         '0x54F4E468FB0297F55D8DfE57336D186009A1455a'
-       ];
+test('can cast an executive vote and retrieve voted on addresses from slate', async () => {
+  const { voteProxy } = await voteProxyService.getVoteProxy(addresses.ali);
+  const vpAddress = voteProxy.getProxyAddress();
+  const picks = [
+    '0x26EC003c72ebA27749083d588cdF7EBA665c0A1D',
+    '0x54F4E468FB0297F55D8DfE57336D186009A1455a'
+  ];
 
-       await voteProxyService.voteExec(vpAddress, picks);
+  await voteProxyService.voteExec(vpAddress, picks);
 
-       const addressesVotedOn =
-           await voteProxyService.getVotedProposalAddresses(vpAddress);
-       expect(addressesVotedOn).toEqual(picks);
-     });
+  const addressesVotedOn = await voteProxyService.getVotedProposalAddresses(
+    vpAddress
+  );
+  expect(addressesVotedOn).toEqual(picks);
+});
 
 test('can free an amount of MKR', async () => {
   const amountToFree = 1;
 
-  const {voteProxy} = await voteProxyService.getVoteProxy(addresses.ali);
+  const { voteProxy } = await voteProxyService.getVoteProxy(addresses.ali);
   const vpAddress = voteProxy.getProxyAddress();
 
   const preFreeDeposits = await chiefService.getNumDeposits(vpAddress);
   await voteProxyService.free(vpAddress, amountToFree);
 
   const postFreeDeposits = await chiefService.getNumDeposits(vpAddress);
-  expect(postFreeDeposits.toNumber())
-      .toBe(preFreeDeposits.toNumber() - amountToFree);
+  expect(postFreeDeposits.toNumber()).toBe(
+    preFreeDeposits.toNumber() - amountToFree
+  );
 });
 
 test('can free all MKR', async () => {
-  const {voteProxy} = await voteProxyService.getVoteProxy(addresses.ali);
+  const { voteProxy } = await voteProxyService.getVoteProxy(addresses.ali);
   const vpAddress = voteProxy.getProxyAddress();
 
   const preFreeDeposits = await chiefService.getNumDeposits(vpAddress);
@@ -112,22 +114,18 @@ test('can free all MKR', async () => {
   expect(postFreeDeposits.toNumber()).toBe(0);
 });
 
-test('getVoteProxy returns a VoteProxy if one exists for a given address',
-     async () => {
-       const address = addresses.ali;
-       const {hasProxy, voteProxy} =
-           await voteProxyService.getVoteProxy(address);
+test('getVoteProxy returns a VoteProxy if one exists for a given address', async () => {
+  const address = addresses.ali;
+  const { hasProxy, voteProxy } = await voteProxyService.getVoteProxy(address);
 
-       expect(hasProxy).toBe(true);
-       expect(voteProxy).toBeInstanceOf(VoteProxy);
-     });
+  expect(hasProxy).toBe(true);
+  expect(voteProxy).toBeInstanceOf(VoteProxy);
+});
 
-test('getVoteProxy returns a null if none exists for a given address',
-     async () => {
-       const address = addresses.sam;
-       const {hasProxy, voteProxy} =
-           await voteProxyService.getVoteProxy(address);
+test('getVoteProxy returns a null if none exists for a given address', async () => {
+  const address = addresses.sam;
+  const { hasProxy, voteProxy } = await voteProxyService.getVoteProxy(address);
 
-       expect(hasProxy).toBe(false);
-       expect(voteProxy).toBeNull();
-     });
+  expect(hasProxy).toBe(false);
+  expect(voteProxy).toBeNull();
+});

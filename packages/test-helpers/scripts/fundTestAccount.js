@@ -3,7 +3,7 @@
 
 import map from 'lodash/map';
 import uniq from 'lodash/uniq';
-import {isAddress} from 'web3-utils';
+import { isAddress } from 'web3-utils';
 
 import McdPlugin from '../packages/dai-plugin-mcd/src';
 import Maker from '../packages/dai/src';
@@ -11,15 +11,17 @@ import Maker from '../packages/dai/src';
 const amount = 5;
 
 async function main() {
-  const maker =
-      await Maker.create('test', {plugins : [ McdPlugin ], log : false});
+  const maker = await Maker.create('test', {
+    plugins: [McdPlugin],
+    log: false
+  });
   const address = process.argv[process.argv.length - 1];
   if (!isAddress(address)) {
     console.log('Pass a valid address as the last argument.');
     return;
   }
   console.log(`Sending to ${address}`);
-  const {cdpTypes} = maker.service('mcd:cdpType');
+  const { cdpTypes } = maker.service('mcd:cdpType');
   const currencies = uniq(map(cdpTypes, 'currency'));
 
   for (let cur of currencies) {

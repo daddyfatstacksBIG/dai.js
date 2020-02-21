@@ -1,6 +1,6 @@
 import assert from 'assert';
 import BigNumber from 'bignumber.js';
-import {utils as ethersUtils} from 'ethers';
+import { utils as ethersUtils } from 'ethers';
 
 export function numberToBytes32(num) {
   const bn = ethersUtils.bigNumberify(num);
@@ -16,8 +16,7 @@ export function stringToBytes32(text, pad = true) {
   if (data.length > 32) {
     throw new Error('too long');
   }
-  if (pad)
-    data = ethersUtils.padZeros(data, 32);
+  if (pad) data = ethersUtils.padZeros(data, 32);
   return ethersUtils.hexlify(data);
 }
 
@@ -29,25 +28,30 @@ export function stringToBytes(str) {
 
 export function bytesToString(hex) {
   return Buffer.from(hex.replace(/^0x/, ''), 'hex')
-      .toString()
-      .replace(/\x00/g, ''); // eslint-disable-line no-control-regex
+    .toString()
+    .replace(/\x00/g, ''); // eslint-disable-line no-control-regex
 }
 export function padRight(string, chars, sign) {
   return string + new Array(chars - string.length + 1).join(sign ? sign : '0');
 }
 
-export function toHex(str, {with0x = true, rightPadding = 64} = {}) {
+export function toHex(str, { with0x = true, rightPadding = 64 } = {}) {
   let result = '';
   for (let i = 0; i < str.length; i++) {
     result += str.charCodeAt(i).toString(16);
   }
-  if (rightPadding > 0)
-    result = padRight(result, rightPadding);
+  if (rightPadding > 0) result = padRight(result, rightPadding);
   return with0x ? '0x' + result : result;
 }
 
-export function fromWei(value) { return BigNumber(value).shiftedBy(-18); }
+export function fromWei(value) {
+  return BigNumber(value).shiftedBy(-18);
+}
 
-export function fromRay(value) { return BigNumber(value).shiftedBy(-27); }
+export function fromRay(value) {
+  return BigNumber(value).shiftedBy(-27);
+}
 
-export function fromRad(value) { return BigNumber(value).shiftedBy(-45); }
+export function fromRad(value) {
+  return BigNumber(value).shiftedBy(-45);
+}

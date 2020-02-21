@@ -1,30 +1,31 @@
-import {PublicService} from '@makerdao/services-core';
+import { PublicService } from '@makerdao/services-core';
 import assert from 'assert';
-import {netIdtoSpockUrl, netIdtoSpockUrlStaging} from './utils/helpers';
+import { netIdtoSpockUrl, netIdtoSpockUrlStaging } from './utils/helpers';
 
 export default class QueryApi extends PublicService {
   constructor(name = 'govQueryApi') {
-    super(name, [ 'web3' ]);
+    super(name, ['web3']);
     this.queryPromises = {};
     this.staging = false;
   }
 
   async getQueryResponse(serverUrl, query) {
     const resp = await fetch(serverUrl, {
-      method : 'POST',
-      headers :
-          {Accept : 'application/json', 'Content-Type' : 'application/json'},
-      body : JSON.stringify({query})
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query })
     });
-    const {data} = await resp.json();
+    const { data } = await resp.json();
     assert(data, `error fetching data from ${serverUrl}`);
     return data;
   }
 
   async getQueryResponseMemoized(serverUrl, query) {
     let cacheKey = `${serverUrl};${query}`;
-    if (this.queryPromises[cacheKey])
-      return this.queryPromises[cacheKey];
+    if (this.queryPromises[cacheKey]) return this.queryPromises[cacheKey];
     this.queryPromises[cacheKey] = this.getQueryResponse(serverUrl, query);
     return this.queryPromises[cacheKey];
   }
@@ -37,8 +38,9 @@ export default class QueryApi extends PublicService {
 
   connect() {
     const network = this.get('web3').network;
-    this.serverUrl = this.staging ? netIdtoSpockUrlStaging(network)
-                                  : netIdtoSpockUrl(network);
+    this.serverUrl = this.staging
+      ? netIdtoSpockUrlStaging(network)
+      : netIdtoSpockUrl(network);
   }
 
   async getAllWhitelistedPolls() {
@@ -74,8 +76,7 @@ export default class QueryApi extends PublicService {
   }
 
   async getMkrWeight(address, unixTime) {
-    const query = `{totalMkrWeightProxyAndNoProxyByAddressAtTime(argAddress: "${
-        address}", argUnix: ${unixTime}){
+    const query = `{totalMkrWeightProxyAndNoProxyByAddressAtTime(argAddress: "${address}", argUnix: ${unixTime}){
       nodes {
         address
         weight
@@ -86,7 +87,7 @@ export default class QueryApi extends PublicService {
     if (!response.totalMkrWeightProxyAndNoProxyByAddressAtTime.nodes[0])
       return 0;
     return response.totalMkrWeightProxyAndNoProxyByAddressAtTime.nodes[0]
-        .weight;
+      .weight;
   }
 
   async getOptionVotingFor(address, pollId) {
@@ -98,8 +99,7 @@ export default class QueryApi extends PublicService {
       }
     }`;
     const response = await this.getQueryResponse(this.serverUrl, query);
-    if (!response.currentVote.nodes[0])
-      return null;
+    if (!response.currentVote.nodes[0]) return null;
     return response.currentVote.nodes[0].optionId;
   }
 
@@ -114,8 +114,7 @@ export default class QueryApi extends PublicService {
   }
 
   async getMkrSupport(pollId, unixTime) {
-    const query = `{voteOptionMkrWeightsAtTime(argPollId: ${pollId}, argUnix: ${
-        unixTime}){
+    const query = `{voteOptionMkrWeightsAtTime(argPollId: ${pollId}, argUnix: ${unixTime}){
     nodes{
       optionId
       mkrSupport
@@ -127,13 +126,15 @@ export default class QueryApi extends PublicService {
     // We don't want to calculate votes for 0:abstain
     weights = weights.filter(o => o.optionId !== 0);
     const totalWeight = weights.reduce((acc, cur) => {
-      const mkrSupport =
-          isNaN(parseFloat(cur.mkrSupport)) ? 0 : parseFloat(cur.mkrSupport);
+      const mkrSupport = isNaN(parseFloat(cur.mkrSupport))
+        ? 0
+        : parseFloat(cur.mkrSupport);
       return acc + mkrSupport;
     }, 0);
     return weights.map(o => {
-      const mkrSupport =
-          isNaN(parseFloat(o.mkrSupport)) ? 0 : parseFloat(o.mkrSupport);
+      const mkrSupport = isNaN(parseFloat(o.mkrSupport))
+        ? 0
+        : parseFloat(o.mkrSupport);
       o.mkrSupport = mkrSupport;
       o.percentage = (100 * mkrSupport) / totalWeight;
       return o;

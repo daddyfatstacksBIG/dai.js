@@ -1,14 +1,14 @@
-import {PrivateService} from '@makerdao/services-core';
+import { PrivateService } from '@makerdao/services-core';
 
-import {END, ESM, MKR} from './utils/constants';
-import {getCurrency} from './utils/helpers';
-import tracksTransactions,
-{tracksTransactionsWithOptions} from './utils/tracksTransactions';
+import { END, ESM, MKR } from './utils/constants';
+import { getCurrency } from './utils/helpers';
+import tracksTransactions, {
+  tracksTransactionsWithOptions
+} from './utils/tracksTransactions';
 
 export default class EsmService extends PrivateService {
   constructor(name = 'esm') {
-    super(name,
-          [ 'smartContract', 'web3', 'token', 'allowance', 'govQueryApi' ]);
+    super(name, ['smartContract', 'web3', 'token', 'allowance', 'govQueryApi']);
   }
 
   async thresholdAmount() {
@@ -27,8 +27,10 @@ export default class EsmService extends PrivateService {
   }
 
   async canFire() {
-    const [fired, live] =
-        await Promise.all([ this.fired(), this.emergencyShutdownActive() ]);
+    const [fired, live] = await Promise.all([
+      this.fired(),
+      this.emergencyShutdownActive()
+    ]);
     return !fired && !live;
   }
 
@@ -45,12 +47,16 @@ export default class EsmService extends PrivateService {
     return getCurrency(total, MKR).shiftedBy(-18);
   }
 
-  @tracksTransactionsWithOptions({numArguments : 3})
-  async stake(amount, skipChecks = false, {promise}) {
+  @tracksTransactionsWithOptions({ numArguments: 3 })
+  async stake(amount, skipChecks = false, { promise }) {
     const mkrAmount = getCurrency(amount, MKR);
     if (!skipChecks) {
-      const [fired, mkrBalance] = await Promise.all(
-          [ this.fired(), this.get('token').getToken(MKR).balance() ]);
+      const [fired, mkrBalance] = await Promise.all([
+        this.fired(),
+        this.get('token')
+          .getToken(MKR)
+          .balance()
+      ]);
       if (fired) {
         throw new Error('cannot join when emergency shutdown has been fired');
       }
@@ -58,17 +64,21 @@ export default class EsmService extends PrivateService {
         throw new Error('amount to join is greater than the user balance');
       }
     }
-    return this._esmContract().join(mkrAmount.toFixed('wei'), {promise});
+    return this._esmContract().join(mkrAmount.toFixed('wei'), { promise });
   }
 
-  @tracksTransactionsWithOptions({numArguments : 2})
-  async triggerEmergencyShutdown(skipChecks = false, {promise}) {
+  @tracksTransactionsWithOptions({ numArguments: 2 })
+  async triggerEmergencyShutdown(skipChecks = false, { promise }) {
     if (!skipChecks) {
-      const [thresholdAmount, totalStaked, canFire] = await Promise.all(
-          [ this.thresholdAmount(), this.getTotalStaked(), this.canFire() ]);
+      const [thresholdAmount, totalStaked, canFire] = await Promise.all([
+        this.thresholdAmount(),
+        this.getTotalStaked(),
+        this.canFire()
+      ]);
       if (totalStaked.lt(thresholdAmount)) {
         throw new Error(
-            'total amount of staked MKR has not reached the required threshold');
+          'total amount of staked MKR has not reached the required threshold'
+        );
       }
       if (!canFire) {
         throw new Error('emergency shutdown has already been initiated');
@@ -84,7 +94,7 @@ export default class EsmService extends PrivateService {
       const senderAddress = e.txFrom;
       const amount = MKR(e.joinAmount);
       const time = new Date(e.blockTimestamp);
-      return {transactionHash, senderAddress, amount, time};
+      return { transactionHash, senderAddress, amount, time };
     });
     const sortedParsedStakes = parsedStakes.sort((a, b) => {
       // sort by date descending
@@ -93,7 +103,11 @@ export default class EsmService extends PrivateService {
     return sortedParsedStakes;
   }
 
-  _esmContract() { return this.get('smartContract').getContractByName(ESM); }
+  _esmContract() {
+    return this.get('smartContract').getContractByName(ESM);
+  }
 
-  _endContract() { return this.get('smartContract').getContractByName(END); }
+  _endContract() {
+    return this.get('smartContract').getContractByName(END);
+  }
 }

@@ -1,4 +1,4 @@
-import {setupTestMakerInstance} from '../helpers';
+import { setupTestMakerInstance } from '../helpers';
 
 let service;
 

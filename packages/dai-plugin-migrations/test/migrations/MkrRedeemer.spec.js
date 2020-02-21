@@ -1,14 +1,15 @@
-import {OLD_MKR} from '../../src';
-import {Migrations, ServiceRoles} from '../../src/constants';
-import {migrationMaker} from '../helpers';
+import { OLD_MKR } from '../../src';
+import { Migrations, ServiceRoles } from '../../src/constants';
+import { migrationMaker } from '../helpers';
 
 let maker, migration;
 
 describe('MKR migration check', () => {
   beforeAll(async () => {
     maker = await migrationMaker();
-    migration = maker.service(ServiceRoles.MIGRATION)
-                    .getMigration(Migrations.MKR_REDEEMER);
+    migration = maker
+      .service(ServiceRoles.MIGRATION)
+      .getMigration(Migrations.MKR_REDEEMER);
   });
 
   test('if the account has no old MKR, return zero', async () => {
@@ -26,7 +27,8 @@ describe('MKR migration check', () => {
 
 async function addFreshAccount() {
   const newKey =
-      'b3ae65f191aac33f3e3f662b8411cabf14f91f2b48cf338151d6021ea1c08541';
-  await maker.service('accounts')
-      .addAccount('newAccount', {type : 'privateKey', key : newKey});
+    'b3ae65f191aac33f3e3f662b8411cabf14f91f2b48cf338151d6021ea1c08541';
+  await maker
+    .service('accounts')
+    .addAccount('newAccount', { type: 'privateKey', key: newKey });
 }
