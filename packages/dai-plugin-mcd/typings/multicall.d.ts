@@ -107,7 +107,7 @@ declare global {
      */
     debtFloor: BigNumber;
   }
-  
+
   interface CollateralTypeDataResult {
      /**
      * The id of this vault.
