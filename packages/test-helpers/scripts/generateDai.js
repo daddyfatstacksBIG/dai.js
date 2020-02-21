@@ -1,9 +1,10 @@
 // usage:
-// > node_modules/.bin/babel-node packages/test-helpers/scripts/generateDai.js <address> <daiAmount>
+// > node_modules/.bin/babel-node packages/test-helpers/scripts/generateDai.js
+// <address> <daiAmount>
 
-import { isAddress } from 'web3-utils';
-import { MDAI, ETH } from '@makerdao/dai-plugin-mcd/src/index';
-import { mcdMaker } from '@makerdao/dai-plugin-mcd/test/helpers';
+import {ETH, MDAI} from '@makerdao/dai-plugin-mcd/src/index';
+import {mcdMaker} from '@makerdao/dai-plugin-mcd/test/helpers';
+import {isAddress} from 'web3-utils';
 
 async function main() {
   const maker = await mcdMaker();
@@ -23,7 +24,6 @@ async function main() {
   const dai = cdpMgr.get('token').getToken(MDAI);
   const balance = await dai.balanceOf(address)
   console.log(`Balance of ${address}: ${balance}`)
-
 }
 
 (async fn => {

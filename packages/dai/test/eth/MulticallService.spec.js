@@ -1,28 +1,19 @@
-import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
-import Maker from '../../src/index';
+import TestAccountProvider from
+    '@makerdao/test-helpers/src/TestAccountProvider';
 import BigNumber from 'bignumber.js';
 
-import schemas, {
-  TOTAL_CDP_DEBT,
-  ETH_PRICE,
-  CDP_COLLATERAL,
-  CDP_DEBT,
-  CDP_COLLATERAL_VALUE,
-  LAST_CREATED_CDP_COLLATERAL_VALUE,
-  CDP_OWNER
-} from '../helpers/schemas';
+import Maker from '../../src/index';
+import schemas,
+{CDP_COLLATERAL, CDP_COLLATERAL_VALUE, CDP_DEBT, CDP_OWNER, ETH_PRICE,
+ LAST_CREATED_CDP_COLLATERAL_VALUE, TOTAL_CDP_DEBT} from '../helpers/schemas';
 
 let maker, multicall, watcher, address, cdpId1, cdpId2;
 
 beforeAll(async () => {
   maker = await Maker.create('test', {
-    web3: {
-      pollingInterval: 100
-    },
-    multicall: {
-      debounceTime: 1
-    },
-    log: false
+    web3 : {pollingInterval : 100},
+    multicall : {debounceTime : 1},
+    log : false
   });
   await maker.authenticate();
   address = TestAccountProvider.nextAddress();
@@ -31,18 +22,18 @@ beforeAll(async () => {
   multicall.registerSchemas(schemas);
 
   const proxyAddress = await maker.service('proxy').ensureProxy();
-  ({ id: cdpId1 } = {}) = await maker.service('cdp').openProxyCdpLockEthAndDrawDai(1, 100, proxyAddress); // prettier-ignore
-  ({ id: cdpId2 } = {}) = await maker.service('cdp').openProxyCdpLockEthAndDrawDai(5, 100, proxyAddress); // prettier-ignore
+  ({id : cdpId1} = {}) =
+      await maker.service('cdp').openProxyCdpLockEthAndDrawDai(
+          1, 100, proxyAddress); // prettier-ignore
+  ({id : cdpId2} = {}) =
+      await maker.service('cdp').openProxyCdpLockEthAndDrawDai(
+          5, 100, proxyAddress); // prettier-ignore
   await maker.service('cdp').openProxyCdpLockEthAndDrawDai(1, 50, proxyAddress);
 });
 
-beforeEach(() => {
-  multicall.start();
-});
+beforeEach(() => { multicall.start(); });
 
-afterEach(() => {
-  multicall.stop();
-});
+afterEach(() => { multicall.stop(); });
 
 test('get eth balance via multicall', async () => {
   const web3 = multicall.get('web3');
@@ -50,16 +41,16 @@ test('get eth balance via multicall', async () => {
   watcher.stop();
   const initialBlock = (await web3.getBlock('latest')).number + 1;
   const initialEthBalance = fromWei(await web3.getBalance(address)).toString();
-  watcher.tap(() => [
-    {
-      call: ['getEthBalance(address)(uint256)', address],
-      returns: [['ETH_BALANCE', v => fromWei(v.toString())]]
-    }
-  ]);
+  watcher.tap(() => [{
+                call : [ 'getEthBalance(address)(uint256)', address ],
+                returns : [ [ 'ETH_BALANCE', v => fromWei(v.toString()) ] ]
+              }]);
   watcher.start();
   const results = {};
-  const batchSub = watcher.subscribe(update => (results[update.type] = update.value.toString()));
-  const newBlockSub = watcher.onNewBlock(number => (results.blockNumber = number));
+  const batchSub = watcher.subscribe(
+      update => (results[update.type] = update.value.toString()));
+  const newBlockSub =
+      watcher.onNewBlock(number => (results.blockNumber = number));
   await watcher.awaitInitialFetch();
   batchSub.unsub();
   newBlockSub.unsub();
@@ -104,27 +95,23 @@ test('computed observable', async () => {
 
 test('computed observable with nested dependencies', async () => {
   const expectedLastCreatedCdpDebt = BigNumber(400);
-  const lastCreatedCdpDebt = await maker.latest(LAST_CREATED_CDP_COLLATERAL_VALUE);
+  const lastCreatedCdpDebt =
+      await maker.latest(LAST_CREATED_CDP_COLLATERAL_VALUE);
   expect(lastCreatedCdpDebt).toEqual(expectedLastCreatedCdpDebt);
   expect(multicall.totalActiveSchemas).toEqual(3);
 });
 
 test('observable throws args validation error', () => {
-  expect(() => {
-    maker.latest(CDP_COLLATERAL, -9000);
-  }).toThrow(/invalid cdp id/i);
+  expect(() => { maker.latest(CDP_COLLATERAL, -9000); })
+      .toThrow(/invalid cdp id/i);
 });
 
 test('observable throws invalid key error', () => {
-  expect(() => {
-    maker.latest(null);
-  }).toThrow(/invalid observable key/i);
+  expect(() => { maker.latest(null); }).toThrow(/invalid observable key/i);
 });
 
 test('observable throws insufficient args error', () => {
-  expect(() => {
-    maker.latest(CDP_OWNER);
-  }).toThrow(/expects.*argument/i);
+  expect(() => { maker.latest(CDP_OWNER); }).toThrow(/expects.*argument/i);
 });
 
 test('observable throws result validation error', async () => {

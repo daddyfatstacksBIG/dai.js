@@ -1,17 +1,21 @@
-import fetch from 'node-fetch';
+import {createCurrency} from '@makerdao/currency';
 import Maker from '@makerdao/dai';
-import govPlugin from '../../src/index';
 import configPlugin from '@makerdao/dai-plugin-config';
-import { createCurrency } from '@makerdao/currency';
+import fetch from 'node-fetch';
+
+import govPlugin from '../../src/index';
 
 const infuraProjectId = 'c3f0f26a4c1742e0949d8eedfc47be67';
 
 const MKR = createCurrency('MKR');
 
-// Until we have better event listeners from the server, we'll have to fake it with sleep
+// Until we have better event listeners from the server, we'll have to fake it
+// with sleep
 export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-/** Feature Flag: remove this block when transition to ex_testchain is complete: */
+/**
+ * Feature Flag: remove this block when transition to ex_testchain is complete:
+ */
 function ganacheAddress() {
   const port = process.env.GOV_TESTNET_PORT || 2000;
   return `http://localhost:${port}`;
@@ -20,16 +24,11 @@ function ganacheAddress() {
 export async function takeSnapshotOriginal() {
   try {
     const res = await fetch(ganacheAddress(), {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'evm_snapshot',
-        params: []
-      })
+      method : 'POST',
+      headers :
+          {Accept : 'application/json', 'Content-Type' : 'application/json'},
+      body : JSON.stringify(
+          {jsonrpc : '2.0', method : 'evm_snapshot', params : []})
     });
 
     const json = await res.json();
@@ -42,16 +41,11 @@ export async function takeSnapshotOriginal() {
 export async function restoreSnapshotOriginal(snapId) {
   try {
     const res = await fetch(ganacheAddress(), {
-      method: 'POST',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'evm_revert',
-        params: [snapId]
-      })
+      method : 'POST',
+      headers :
+          {Accept : 'application/json', 'Content-Type' : 'application/json'},
+      body : JSON.stringify(
+          {jsonrpc : '2.0', method : 'evm_revert', params : [ snapId ]})
     });
 
     const json = await res.json();
@@ -63,37 +57,34 @@ export async function restoreSnapshotOriginal(snapId) {
 
 export const setupMakerOld = async (network) => {
   const accounts = {
-    owner: {
-      type: 'privateKey',
-      key: '0x474beb999fed1b3af2ea048f963833c686a0fba05f5724cb6417cf3b8ee9697e'
+    owner : {
+      type : 'privateKey',
+      key : '0x474beb999fed1b3af2ea048f963833c686a0fba05f5724cb6417cf3b8ee9697e'
     },
-    ali: {
-      type: 'privateKey',
-      key: '0xbc838ab7af00cda00cb02efbbe4dbb1ce51f5d2613acfe11bd970ce659ad8704'
+    ali : {
+      type : 'privateKey',
+      key : '0xbc838ab7af00cda00cb02efbbe4dbb1ce51f5d2613acfe11bd970ce659ad8704'
     },
-    sam: {
-      type: 'privateKey',
-      key: '0xb3ae65f191aac33f3e3f662b8411cabf14f91f2b48cf338151d6021ea1c08541'
+    sam : {
+      type : 'privateKey',
+      key : '0xb3ae65f191aac33f3e3f662b8411cabf14f91f2b48cf338151d6021ea1c08541'
     },
-    ava: {
-      type: 'privateKey',
-      key: '0xa052332a502d9a91636931be4ffd6e1468684544a1a7bc4a64c21c6f5daa759a'
+    ava : {
+      type : 'privateKey',
+      key : '0xa052332a502d9a91636931be4ffd6e1468684544a1a7bc4a64c21c6f5daa759a'
     }
   };
 
   let url;
-  if(network==='ganache') url = 'http://localhost:2000';
+  if (network === 'ganache')
+    url = 'http://localhost:2000';
   const preset = network === 'ganache' ? 'http' : network;
   const maker = await Maker.create(preset, {
-    plugins: [[govPlugin, { network }]],
+    plugins : [ [ govPlugin, {network} ] ],
     url,
     accounts,
-    log: false,
-    web3: {
-      provider: {
-        infuraProjectId
-      }
-    }
+    log : false,
+    web3 : {provider : {infuraProjectId}}
   });
   await maker.authenticate();
   return maker;
@@ -102,28 +93,23 @@ export const setupMakerOld = async (network) => {
 
 const fetchAccounts = async () => {
   const client = global.client;
-  const { details: chainData } = await client.api.getChain(global.testchainId);
+  const {details : chainData} = await client.api.getChain(global.testchainId);
   const deployedAccounts = chainData.chain_details.accounts;
 
   // Find the coinbase account and put it aside
   const coinbaseAccount = deployedAccounts.find(
-    account => account.address === chainData.chain_details.coinbase
-  );
-  const otherAccounts = deployedAccounts.filter(
-    account => account !== coinbaseAccount
-  );
+      account => account.address === chainData.chain_details.coinbase);
+  const otherAccounts =
+      deployedAccounts.filter(account => account !== coinbaseAccount);
 
   // Set some account names for easy reference
-  const accounts = ['ali', 'sam', 'ava'].reduce((result, name, i) => {
-    result[name] = {
-      type: 'privateKey',
-      key: otherAccounts[i].priv_key
-    };
+  const accounts = [ 'ali', 'sam', 'ava' ].reduce((result, name, i) => {
+    result[name] = {type : 'privateKey', key : otherAccounts[i].priv_key};
     return result;
   }, {});
 
   // Add the coinbase account back to the accounts
-  accounts.owner = { type: 'privateKey', key: coinbaseAccount.priv_key };
+  accounts.owner = {type : 'privateKey', key : coinbaseAccount.priv_key};
 
   return accounts;
 };
@@ -151,18 +137,19 @@ export const deleteSnapshot = async (client, snapshotId) => {
 
 export const setupTestMakerInstance = async (network = 'ganache') => {
   // Remove this line when the old testchain system is fully replace
-  if (global.useOldChain) return setupMakerOld(network);
+  if (global.useOldChain)
+    return setupMakerOld(network);
 
   const accounts = await fetchAccounts();
   const maker = await Maker.create('http', {
-    plugins: [
-      [govPlugin, { network }],
+    plugins : [
+      [ govPlugin, {network} ],
       [
         configPlugin,
-        { testchainId: global.testchainId, backendEnv: global.backendEnv }
+        {testchainId : global.testchainId, backendEnv : global.backendEnv}
       ]
     ],
-    url: global.rpcUrl,
+    url : global.rpcUrl,
     accounts
   });
 
@@ -186,12 +173,8 @@ export const linkAccounts = async (maker, initiator, approver) => {
   maker.useAccount(lad);
 };
 
-export const sendMkrToAddress = async (
-  maker,
-  accountToUse,
-  receiver,
-  amount
-) => {
+export const sendMkrToAddress =
+    async (maker, accountToUse, receiver, amount) => {
   const lad = maker.currentAccount().name;
   const mkr = await maker.getToken(MKR);
 

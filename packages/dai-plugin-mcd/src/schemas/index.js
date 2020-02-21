@@ -1,14 +1,13 @@
-import vat from './vat';
-import spot from './spot';
-import proxyRegistry from './proxyRegistry';
+import cat from './cat';
 import cdpManager from './cdpManager';
+import computed from './computed';
+import getCdps from './getCdps';
 import jug from './jug';
 import pot from './pot';
-import cat from './cat';
+import proxyRegistry from './proxyRegistry';
+import spot from './spot';
 import token from './token';
-
-import getCdps from './getCdps';
-import computed from './computed';
+import vat from './vat';
 
 export * from './_constants';
 export default {

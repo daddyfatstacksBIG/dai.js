@@ -1,13 +1,13 @@
-import {
-  setupTestMakerInstance,
-  setUpAllowance,
-  restoreSnapshotOriginal,
-  sleep,
-  addressRegex
-} from './helpers';
 import EsmService from '../src/EsmService';
 
-import { dummyEsmData, parsedDummyEsmData } from './fixtures';
+import {dummyEsmData, parsedDummyEsmData} from './fixtures';
+import {
+  addressRegex,
+  restoreSnapshotOriginal,
+  setUpAllowance,
+  setupTestMakerInstance,
+  sleep
+} from './helpers';
 
 let maker, esmService;
 beforeAll(async () => {
@@ -32,9 +32,8 @@ afterAll(async done => {
   }
 });
 
-test('can create ESM Service', async () => {
-  expect(esmService).toBeInstanceOf(EsmService);
-});
+test('can create ESM Service',
+     async () => { expect(esmService).toBeInstanceOf(EsmService); });
 
 test('can access deployed esm contract interface', async () => {
   const contract = await esmService._esmContract();
@@ -91,9 +90,8 @@ test('triggering the esm with staked amount < threshold will fail', async () => 
   try {
     await esmService.triggerEmergencyShutdown();
   } catch (e) {
-    expect(e).toEqual(
-      Error('total amount of staked MKR has not reached the required threshold')
-    );
+    expect(e).toEqual(Error(
+        'total amount of staked MKR has not reached the required threshold'));
   }
 });
 

@@ -1,10 +1,11 @@
+import VoteProxyFactoryService from '../src/VoteProxyFactoryService';
+
 import {
-  setupTestMakerInstance,
   linkAccounts,
   restoreSnapshotOriginal,
+  setupTestMakerInstance,
   sleep
 } from './helpers';
-import VoteProxyFactoryService from '../src/VoteProxyFactoryService';
 
 let maker, addresses, voteProxyFactory, voteProxyService;
 jest.setTimeout(60000);
@@ -12,9 +13,8 @@ jest.setTimeout(60000);
 beforeAll(async () => {
   maker = await setupTestMakerInstance();
 
-  addresses = maker
-    .listAccounts()
-    .reduce((acc, cur) => ({ ...acc, [cur.name]: cur.address }), {});
+  addresses = maker.listAccounts().reduce(
+      (acc, cur) => ({...acc, [cur.name] : cur.address}), {});
 
   voteProxyFactory = maker.service('voteProxyFactory');
   voteProxyService = maker.service('voteProxy');
@@ -43,7 +43,7 @@ test('can create VPFS Service', async () => {
 test('can create a vote proxy linking two addressses', async () => {
   await linkAccounts(maker, addresses.ali, addresses.ava);
 
-  const { hasProxy } = await voteProxyService.getVoteProxy(addresses.ali);
+  const {hasProxy} = await voteProxyService.getVoteProxy(addresses.ali);
   expect(hasProxy).toBeTruthy();
 });
 
@@ -51,7 +51,7 @@ test('can break a link between linked accounts', async () => {
   maker.useAccount('ali');
   await voteProxyFactory.breakLink();
 
-  const { hasProxy } = await voteProxyService.getVoteProxy(addresses.ali);
+  const {hasProxy} = await voteProxyService.getVoteProxy(addresses.ali);
   expect(hasProxy).toBe(false);
 });
 
@@ -66,14 +66,13 @@ test('approveLink txObject gets correct proxyAddress', async () => {
 
   // approver confirms it
   maker.useAccountWithAddress(approver);
-  const approveTx = await maker
-    .service('voteProxyFactory')
-    .approveLink(initiator);
+  const approveTx =
+      await maker.service('voteProxyFactory').approveLink(initiator);
 
   // no other side effects
   maker.useAccount(lad);
 
-  const { voteProxy } = await voteProxyService.getVoteProxy(addresses.ali);
+  const {voteProxy} = await voteProxyService.getVoteProxy(addresses.ali);
   expect(voteProxy.getProxyAddress()).toEqual(approveTx.proxyAddress);
   expect(approveTx.fees.toNumber()).toBeGreaterThan(0);
   expect(approveTx.timeStampSubmitted).toBeTruthy();

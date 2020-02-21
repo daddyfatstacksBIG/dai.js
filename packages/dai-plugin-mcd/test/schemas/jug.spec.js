@@ -1,21 +1,18 @@
-import { mcdMaker } from '../helpers';
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
+import {restoreSnapshot, takeSnapshot} from '@makerdao/test-helpers';
 import BigNumber from 'bignumber.js';
 
 import {
   ANNUAL_STABILITY_FEE,
-  DATE_STABILITY_FEES_LAST_LEVIED,
-  BASE_COLLATERAL_FEE
+  BASE_COLLATERAL_FEE,
+  DATE_STABILITY_FEES_LAST_LEVIED
 } from '../../src/schemas';
-
 import jugSchemas from '../../src/schemas/jug';
+import {mcdMaker} from '../helpers';
 
 let maker, snapshotData;
 
 beforeAll(async () => {
-  maker = await mcdMaker({
-    multicall: true
-  });
+  maker = await mcdMaker({multicall : true});
 
   snapshotData = await takeSnapshot(maker);
   maker.service('multicall').createWatcher();
@@ -23,9 +20,7 @@ beforeAll(async () => {
   maker.service('multicall').start();
 });
 
-afterAll(async () => {
-  await restoreSnapshot(snapshotData, maker);
-});
+afterAll(async () => { await restoreSnapshot(snapshotData, maker); });
 
 test(ANNUAL_STABILITY_FEE, async () => {
   const expected = 0.04999999999989363;
@@ -35,10 +30,8 @@ test(ANNUAL_STABILITY_FEE, async () => {
 
 test(DATE_STABILITY_FEES_LAST_LEVIED, async () => {
   const timestamp = Math.round(new Date().getTime() / 1000);
-  const dateStabilityFeesLastLevied = await maker.latest(
-    DATE_STABILITY_FEES_LAST_LEVIED,
-    'ETH-A'
-  );
+  const dateStabilityFeesLastLevied =
+      await maker.latest(DATE_STABILITY_FEES_LAST_LEVIED, 'ETH-A');
 
   expect(dateStabilityFeesLastLevied instanceof Date).toEqual(true);
   expect(timestamp - dateStabilityFeesLastLevied).toBeLessThanOrEqual(10);

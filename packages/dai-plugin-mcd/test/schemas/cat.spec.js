@@ -1,22 +1,19 @@
-import { mcdMaker } from '../helpers';
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
+import {restoreSnapshot, takeSnapshot} from '@makerdao/test-helpers';
 import BigNumber from 'bignumber.js';
-import testnetAddresses from '../../contracts/addresses/testnet';
 
+import testnetAddresses from '../../contracts/addresses/testnet';
 import {
-  LIQUIDATOR_ADDRESS,
   LIQUIDATION_PENALTY,
+  LIQUIDATOR_ADDRESS,
   MAX_AUCTION_LOT_SIZE
 } from '../../src/schemas';
-
 import catSchemas from '../../src/schemas/cat';
+import {mcdMaker} from '../helpers';
 
 let maker, snapshotData;
 
 beforeAll(async () => {
-  maker = await mcdMaker({
-    multicall: true
-  });
+  maker = await mcdMaker({multicall : true});
 
   snapshotData = await takeSnapshot(maker);
   maker.service('multicall').createWatcher();
@@ -24,18 +21,14 @@ beforeAll(async () => {
   maker.service('multicall').start();
 });
 
-afterAll(async () => {
-  await restoreSnapshot(snapshotData, maker);
-});
+afterAll(async () => { await restoreSnapshot(snapshotData, maker); });
 
 test(LIQUIDATOR_ADDRESS, async () => {
-  const { MCD_FLIP_ETH_A: expected } = testnetAddresses;
+  const {MCD_FLIP_ETH_A : expected} = testnetAddresses;
   const address = await maker.latest(LIQUIDATOR_ADDRESS, 'ETH-A');
   expect(address.toLowerCase()).toEqual(expected);
 
-  expect(() => {
-    maker.latest(LIQUIDATOR_ADDRESS, null);
-  }).toThrow(/invalid/i);
+  expect(() => { maker.latest(LIQUIDATOR_ADDRESS, null); }).toThrow(/invalid/i);
 });
 
 test(LIQUIDATION_PENALTY, async () => {

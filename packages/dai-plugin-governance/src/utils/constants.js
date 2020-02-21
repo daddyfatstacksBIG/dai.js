@@ -1,4 +1,4 @@
-import { createCurrency } from '@makerdao/currency';
+import {createCurrency} from '@makerdao/currency';
 
 export const MKR = createCurrency('MKR');
 export const IOU = createCurrency('IOU');
@@ -18,5 +18,5 @@ export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 export const LOCAL_URL = 'http://localhost:3001/v1';
 export const KOVAN_URL = 'https://staging-gov-db.makerfoundation.com/api/v1';
 export const STAGING_MAINNET_URL =
-  'https://qa-gov-db.makerfoundation.com/api/v1';
+    'https://qa-gov-db.makerfoundation.com/api/v1';
 export const MAINNET_URL = 'https://gov-db.makerfoundation.com/api/v1';

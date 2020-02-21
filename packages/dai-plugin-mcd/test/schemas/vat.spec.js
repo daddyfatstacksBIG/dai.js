@@ -1,24 +1,23 @@
-import { mcdMaker, setupCollateral } from '../helpers';
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
-import { ETH, BAT, MDAI } from '../../src';
-import { ServiceRoles } from '../../src/constants';
-import { fromRay, fromWei, isBigNumber, isCurrency } from '../../src/utils';
+import {restoreSnapshot, takeSnapshot} from '@makerdao/test-helpers';
 import BigNumber from 'bignumber.js';
 
+import {BAT, ETH, MDAI} from '../../src';
+import {ServiceRoles} from '../../src/constants';
 import {
-  TOTAL_ENCUMBERED_DEBT,
-  DEBT_SCALING_FACTOR,
-  PRICE_WITH_SAFETY_MARGIN,
   DEBT_CEILING,
   DEBT_FLOOR,
-  TOTAL_DAI_SUPPLY,
+  DEBT_SCALING_FACTOR,
   ENCUMBERED_COLLATERAL,
   ENCUMBERED_DEBT,
-  UNLOCKED_COLLATERAL,
-  GLOBAL_DEBT_CEILING
+  GLOBAL_DEBT_CEILING,
+  PRICE_WITH_SAFETY_MARGIN,
+  TOTAL_DAI_SUPPLY,
+  TOTAL_ENCUMBERED_DEBT,
+  UNLOCKED_COLLATERAL
 } from '../../src/schemas';
-
 import vatSchemas from '../../src/schemas/vat';
+import {fromRay, fromWei, isBigNumber, isCurrency} from '../../src/utils';
+import {mcdMaker, setupCollateral} from '../helpers';
 
 let maker, snapshotData, ethAInfo, batAInfo, cdpMgr, cdpTypeService;
 
@@ -32,51 +31,39 @@ const BAT_A_PRICE = 40;
 
 beforeAll(async () => {
   maker = await mcdMaker({
-    cdpTypes: [
-      { currency: ETH, ilk: 'ETH-A' },
-      { currency: BAT, ilk: 'BAT-A' }
-    ],
-    multicall: true
+    cdpTypes :
+        [ {currency : ETH, ilk : 'ETH-A'}, {currency : BAT, ilk : 'BAT-A'} ],
+    multicall : true
   });
 
   snapshotData = await takeSnapshot(maker);
   maker.service('multicall').createWatcher();
   maker.service('multicall').registerSchemas(vatSchemas);
   maker.service('multicall').start();
-  await setupCollateral(maker, 'ETH-A', {
-    price: ETH_A_PRICE
-  });
-  await setupCollateral(maker, 'BAT-A', { price: BAT_A_PRICE });
+  await setupCollateral(maker, 'ETH-A', {price : ETH_A_PRICE});
+  await setupCollateral(maker, 'BAT-A', {price : BAT_A_PRICE});
 
   cdpMgr = await maker.service(ServiceRoles.CDP_MANAGER);
   const dai = maker.getToken(MDAI);
   const _proxyAddress = await maker.service('proxy').ensureProxy();
   await dai.approveUnlimited(_proxyAddress);
 
-  await cdpMgr.openLockAndDraw(
-    'ETH-A',
-    ETH_A_COLLATERAL_AMOUNT,
-    ETH_A_DEBT_AMOUNT
-  );
-  await cdpMgr.openLockAndDraw(
-    'BAT-A',
-    BAT_A_COLLATERAL_AMOUNT,
-    BAT_A_DEBT_AMOUNT
-  );
+  await cdpMgr.openLockAndDraw('ETH-A', ETH_A_COLLATERAL_AMOUNT,
+                               ETH_A_DEBT_AMOUNT);
+  await cdpMgr.openLockAndDraw('BAT-A', BAT_A_COLLATERAL_AMOUNT,
+                               BAT_A_DEBT_AMOUNT);
   cdpTypeService = maker.service(ServiceRoles.CDP_TYPE);
   ethAInfo = await cdpTypeService.getCdpType(ETH, 'ETH-A').ilkInfo();
   batAInfo = await cdpTypeService.getCdpType(BAT, 'BAT-A').ilkInfo();
 }, 10000);
 
-afterAll(async () => {
-  await restoreSnapshot(snapshotData, maker);
-});
+afterAll(async () => { await restoreSnapshot(snapshotData, maker); });
 
 test(TOTAL_ENCUMBERED_DEBT, async () => {
   // TODO Define hardcoded rates for given ilks outside of the system and test
   // against those rather than data extracted from the chain
-  const { rate: ethARate } = ethAInfo;
-  const { rate: batARate } = batAInfo;
+  const {rate : ethARate} = ethAInfo;
+  const {rate : batARate} = batAInfo;
 
   const ethADebtAmount = ETH_A_DEBT_AMOUNT.toBigNumber();
   const batADebtAmount = BAT_A_DEBT_AMOUNT.toBigNumber();
@@ -87,29 +74,21 @@ test(TOTAL_ENCUMBERED_DEBT, async () => {
   expect(isBigNumber(ethAEncumberedDebt)).toEqual(true);
   expect(isBigNumber(batAEncumberedDebt)).toEqual(true);
 
-  expect(ethAEncumberedDebt.toNumber()).toBeCloseTo(
-    ethADebtAmount.div(fromRay(ethARate)).toNumber(),
-    12
-  );
+  expect(ethAEncumberedDebt.toNumber())
+      .toBeCloseTo(ethADebtAmount.div(fromRay(ethARate)).toNumber(), 12);
 
-  expect(batAEncumberedDebt.toNumber()).toBeCloseTo(
-    batADebtAmount.div(fromRay(batARate)).toNumber(),
-    12
-  );
+  expect(batAEncumberedDebt.toNumber())
+      .toBeCloseTo(batADebtAmount.div(fromRay(batARate)).toNumber(), 12);
 });
 
 test(DEBT_SCALING_FACTOR, async () => {
-  const { rate: ethARate } = ethAInfo;
-  const { rate: batARate } = batAInfo;
+  const {rate : ethARate} = ethAInfo;
+  const {rate : batARate} = batAInfo;
 
-  const ethADebtScalingFactor = await maker.latest(
-    DEBT_SCALING_FACTOR,
-    'ETH-A'
-  );
-  const batADebtScalingFactor = await maker.latest(
-    DEBT_SCALING_FACTOR,
-    'BAT-A'
-  );
+  const ethADebtScalingFactor =
+      await maker.latest(DEBT_SCALING_FACTOR, 'ETH-A');
+  const batADebtScalingFactor =
+      await maker.latest(DEBT_SCALING_FACTOR, 'BAT-A');
 
   expect(isBigNumber(ethADebtScalingFactor)).toEqual(true);
   expect(isBigNumber(batADebtScalingFactor)).toEqual(true);
@@ -119,18 +98,12 @@ test(DEBT_SCALING_FACTOR, async () => {
 });
 
 test(PRICE_WITH_SAFETY_MARGIN, async () => {
-  const ethAPriceWithSafetyMargin = await maker.latest(
-    PRICE_WITH_SAFETY_MARGIN,
-    'ETH-A'
-  );
-  const batAPriceWithSafetyMargin = await maker.latest(
-    PRICE_WITH_SAFETY_MARGIN,
-    'BAT-A'
-  );
+  const ethAPriceWithSafetyMargin =
+      await maker.latest(PRICE_WITH_SAFETY_MARGIN, 'ETH-A');
+  const batAPriceWithSafetyMargin =
+      await maker.latest(PRICE_WITH_SAFETY_MARGIN, 'BAT-A');
 
-  const ethACalculatedMargin = BigNumber(ETH_A_PRICE)
-    .times(2)
-    .div(3);
+  const ethACalculatedMargin = BigNumber(ETH_A_PRICE).times(2).div(3);
   const batACalculatedMargin = BigNumber(BAT_A_PRICE).div(2);
 
   expect(isBigNumber(ethAPriceWithSafetyMargin)).toEqual(true);
@@ -163,8 +136,8 @@ test(DEBT_FLOOR, async () => {
 });
 
 test(TOTAL_DAI_SUPPLY, async () => {
-  const { Art: ethAArt, rate: ethARate } = ethAInfo;
-  const { Art: batAArt, rate: batARate } = batAInfo;
+  const {Art : ethAArt, rate : ethARate} = ethAInfo;
+  const {Art : batAArt, rate : batARate} = batAInfo;
 
   const ethADaiGenerated = MDAI.rad(BigNumber(ethAArt).times(ethARate));
   const batADaiGenerated = MDAI.rad(BigNumber(batAArt).times(batARate));
@@ -180,32 +153,23 @@ test(ENCUMBERED_COLLATERAL, async () => {
   const cdpId = 1;
   const expected = fromWei(1000000000000000000);
   const encumberedCollateral = await maker.latest(
-    ENCUMBERED_COLLATERAL,
-    'ETH-A',
-    await cdpMgr.getUrn(cdpId)
-  );
+      ENCUMBERED_COLLATERAL, 'ETH-A', await cdpMgr.getUrn(cdpId));
   expect(encumberedCollateral).toEqual(expected);
 });
 
 test(ENCUMBERED_DEBT, async () => {
   const cdpId = 1;
   const expected = fromWei(995000000000000000);
-  const encumberedDebt = await maker.latest(
-    ENCUMBERED_DEBT,
-    'ETH-A',
-    await cdpMgr.getUrn(cdpId)
-  );
+  const encumberedDebt =
+      await maker.latest(ENCUMBERED_DEBT, 'ETH-A', await cdpMgr.getUrn(cdpId));
   expect(encumberedDebt.toNumber()).toBeCloseTo(expected.toNumber());
 });
 
 test(UNLOCKED_COLLATERAL, async () => {
   const cdpId = 1;
   const expected = 0;
-  const col = await maker.latest(
-    UNLOCKED_COLLATERAL,
-    'ETH-A',
-    await cdpMgr.getUrn(cdpId)
-  );
+  const col = await maker.latest(UNLOCKED_COLLATERAL, 'ETH-A',
+                                 await cdpMgr.getUrn(cdpId));
 
   expect(col).toEqual(fromWei(expected));
 });

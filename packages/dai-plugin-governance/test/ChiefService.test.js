@@ -1,12 +1,14 @@
+import * as web3utils from 'web3-utils';
+
+import ChiefService from '../src/ChiefService';
+import {ZERO_ADDRESS} from '../src/utils/constants';
+
 import {
-  setupTestMakerInstance,
-  setUpAllowance,
   restoreSnapshotOriginal,
+  setUpAllowance,
+  setupTestMakerInstance,
   sleep
 } from './helpers';
-import { ZERO_ADDRESS } from '../src/utils/constants';
-import ChiefService from '../src/ChiefService';
-import * as web3utils from 'web3-utils';
 
 let maker, chiefService;
 
@@ -40,16 +42,14 @@ afterAll(async done => {
   }
 });
 
-test('can create Chief Service', async () => {
-  expect(chiefService).toBeInstanceOf(ChiefService);
-});
+test('can create Chief Service',
+     async () => { expect(chiefService).toBeInstanceOf(ChiefService); });
 
 test('can cast vote with an array of addresses', async () => {
   // owner casts vote with picks array
   await chiefService.vote(picks);
-  const slate = await chiefService.getVotedSlate(
-    maker.currentAccount().address
-  );
+  const slate =
+      await chiefService.getVotedSlate(maker.currentAccount().address);
 
   const addrs = await chiefService.getSlateAddresses(slate);
 
@@ -61,14 +61,13 @@ test('can cast vote with a slate hash', async () => {
   await chiefService.etch(picks);
 
   // hash the picks to get slate hash
-  const hash = web3utils.soliditySha3({ type: 'address[]', value: picks });
+  const hash = web3utils.soliditySha3({type : 'address[]', value : picks});
 
   // cast a vote for the slate hash
   await chiefService.vote(hash);
 
-  const slate = await chiefService.getVotedSlate(
-    maker.currentAccount().address
-  );
+  const slate =
+      await chiefService.getVotedSlate(maker.currentAccount().address);
   expect(slate).toBe(hash);
   expect(slate).not.toBe(ZERO_ADDRESS);
 
@@ -77,29 +76,30 @@ test('can cast vote with a slate hash', async () => {
   expect(addresses).toEqual(picks);
 });
 
-test('number of deposits for a proxy contract address should equal locked MKR amount', async () => {
-  await setUpAllowance(maker, chiefService._chiefContract().address);
-  await chiefService.lock(mkrToLock);
+test(
+    'number of deposits for a proxy contract address should equal locked MKR amount',
+    async () => {
+      await setUpAllowance(maker, chiefService._chiefContract().address);
+      await chiefService.lock(mkrToLock);
 
-  const numDeposits = await chiefService.getNumDeposits(
-    maker.currentAccount().address
-  );
+      const numDeposits =
+          await chiefService.getNumDeposits(maker.currentAccount().address);
 
-  expect(numDeposits.toNumber()).toBe(mkrToLock);
-});
+      expect(numDeposits.toNumber()).toBe(mkrToLock);
+    });
 
-test('approval count for a voted-on address should equal locked MKR amount', async () => {
-  const approvalCount = await chiefService.getApprovalCount(picks[0]);
-  expect(approvalCount.toNumber()).toBe(mkrToLock);
-});
+test('approval count for a voted-on address should equal locked MKR amount',
+     async () => {
+       const approvalCount = await chiefService.getApprovalCount(picks[0]);
+       expect(approvalCount.toNumber()).toBe(mkrToLock);
+     });
 
 test('getVoteTally returns the vote tally', async () => {
   const voteTally = await chiefService.getVoteTally();
 
   expect.assertions(picks.length);
-  picks.map(pick =>
-    expect(Object.keys(voteTally).includes(pick.toLowerCase())).toBe(true)
-  );
+  picks.map(pick => expect(Object.keys(voteTally).includes(pick.toLowerCase()))
+                        .toBe(true));
 });
 
 test('get hat should return lifted address', async () => {

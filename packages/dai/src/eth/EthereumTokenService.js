@@ -1,17 +1,20 @@
-import { PrivateService } from '@makerdao/services-core';
-import tokens from '../../contracts/tokens';
+import {PrivateService} from '@makerdao/services-core';
+import assert from 'assert';
+
+import ERC20TokenAbi from '../../contracts/abis/ERC20.json';
 import contracts from '../../contracts/contracts';
 import networks from '../../contracts/networks';
+import tokens from '../../contracts/tokens';
+
 import Erc20Token from './tokens/Erc20Token';
 import EtherToken from './tokens/EtherToken';
-import WethToken from './tokens/WethToken';
 import PethToken from './tokens/PethToken';
-import ERC20TokenAbi from '../../contracts/abis/ERC20.json';
-import assert from 'assert';
+import WethToken from './tokens/WethToken';
 
 export default class EthereumTokenService extends PrivateService {
   constructor(name = 'token') {
-    super(name, ['smartContract', 'web3', 'log', 'gas', 'transactionManager']);
+    super(name,
+          [ 'smartContract', 'web3', 'log', 'gas', 'transactionManager' ]);
     this._tokens = tokens;
     this._addedTokens = {};
   }
@@ -21,44 +24,34 @@ export default class EthereumTokenService extends PrivateService {
       for (const token of settings.erc20) {
         const symbol = token.symbol || token.currency.symbol;
         this._tokens[symbol] = symbol;
-        this._addedTokens[symbol] = [token];
+        this._addedTokens[symbol] = [ token ];
       }
     }
   }
 
-  getTokens() {
-    return Object.keys(this._tokens);
-  }
+  getTokens() { return Object.keys(this._tokens); }
 
   // FIXME should be caching/memoizing here
   getToken(symbol, version) {
     // support passing in Currency constructors
-    if (symbol.symbol) symbol = symbol.symbol;
+    if (symbol.symbol)
+      symbol = symbol.symbol;
 
     assert(symbol, 'Symbol is blank');
-    assert(
-      this.getTokens().indexOf(symbol) >= 0,
-      `Symbol "${symbol}" is not recognized`
-    );
+    assert(this.getTokens().indexOf(symbol) >= 0,
+           `Symbol "${symbol}" is not recognized`);
 
     if (symbol === tokens.ETH) {
-      return new EtherToken(
-        this.get('web3'),
-        this.get('gas'),
-        this.get('transactionManager')
-      );
+      return new EtherToken(this.get('web3'), this.get('gas'),
+                            this.get('transactionManager'));
     }
 
-    const { address, decimals, abi, currency } = this._getTokenInfo(
-      symbol,
-      version
-    );
+    const {address, decimals, abi, currency} =
+        this._getTokenInfo(symbol, version);
 
     const scs = this.get('smartContract');
-    const contract = scs.getContractByAddressAndAbi(
-      address,
-      abi || ERC20TokenAbi
-    );
+    const contract =
+        scs.getContractByAddressAndAbi(address, abi || ERC20TokenAbi);
 
     if (symbol === tokens.WETH) {
       return new WethToken(contract, this.get('web3'), decimals);
@@ -72,30 +65,25 @@ export default class EthereumTokenService extends PrivateService {
       return new PethToken(contract, this.get('web3'), tub);
     }
 
-    return new Erc20Token(
-      contract,
-      this.get('web3'),
-      decimals || 18,
-      symbol,
-      currency
-    );
+    return new Erc20Token(contract, this.get('web3'), decimals || 18, symbol,
+                          currency);
   }
 
   _getTokenInfo(symbol, version) {
-    let { network, networkName } = this.get('web3');
+    let {network, networkName} = this.get('web3');
     const tokenInfoList =
-      this._addedTokens[symbol] || this._getNetworkMapping(network)[symbol];
+        this._addedTokens[symbol] || this._getNetworkMapping(network)[symbol];
 
-    const tokenInfo = version
-      ? tokenInfoList[version - 1]
-      : tokenInfoList[tokenInfoList.length - 1];
+    const tokenInfo = version ? tokenInfoList[version - 1]
+                              : tokenInfoList[tokenInfoList.length - 1];
 
-    if (typeof tokenInfo.address === 'string') return tokenInfo;
+    if (typeof tokenInfo.address === 'string')
+      return tokenInfo;
 
     return {
       ...tokenInfo,
-      address:
-        tokenInfo.address[networkName === 'test' ? 'testnet' : networkName]
+      address :
+          tokenInfo.address[networkName === 'test' ? 'testnet' : networkName]
     };
   }
 
@@ -114,14 +102,12 @@ export default class EthereumTokenService extends PrivateService {
 
     for (let token in tokens) {
       if (token === 'ETH') {
-        tokenArray['ETH'] = [1];
+        tokenArray['ETH'] = [ 1 ];
       }
 
       if (token in mapping) {
         let versionArray = [];
-        mapping[token].forEach(e => {
-          versionArray.push(e.version);
-        });
+        mapping[token].forEach(e => { versionArray.push(e.version); });
         tokenArray[token] = versionArray;
       }
     }
