@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
-CWD=`dirname "$0"`
+CWD=$(dirname "$0")
 CONTRACTS=$CWD/../contracts
 SOURCE=${1:-$CWD/../../../node_modules/@makerdao/testchain}
 
-function jq_inplace {
+function jq_inplace() {
   TMP=$(mktemp)
-  jq "$1" > "$TMP" && mv "$TMP" "$2"
+  jq "$1" >"$TMP" && mv "$TMP" "$2"
 }
 
 for file in "$SOURCE"/out/*.abi; do
