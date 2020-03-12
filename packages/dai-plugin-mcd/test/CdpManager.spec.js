@@ -3,9 +3,7 @@ import { mcdMaker, setupCollateral } from './helpers';
 import { setMethod, transferToBag } from '../src/CdpManager';
 import { ServiceRoles } from '../src/constants';
 import { ETH, MDAI, GNT, DGD, BAT } from '../src';
-import { dummyEventData, formattedDummyEventData } from './fixtures';
 import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
-
 import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
 
 let maker, cdpMgr, txMgr, snapshotData;
@@ -24,6 +22,10 @@ beforeAll(async () => {
   snapshotData = await takeSnapshot(maker);
 });
 
+afterEach(() => {
+  cdpMgr.reset();
+});
+
 afterAll(async () => {
   await restoreSnapshot(snapshotData, maker);
 });
@@ -38,7 +40,6 @@ test('getCdpIds gets empty CDP data from a proxy', async () => {
 test('getCdpIds gets all CDP data from the proxy', async () => {
   const cdp1 = await cdpMgr.open('ETH-A');
   const cdp2 = await cdpMgr.open('BAT-A');
-  cdpMgr.reset();
   const currentProxy = await maker.currentProxy();
   const cdps = await cdpMgr.getCdpIds(currentProxy);
 
@@ -51,7 +52,7 @@ test('getCombinedDebtValue', async () => {
   await setupCollateral(maker, 'ETH-A', { price: 150, debtCeiling: 50 });
   await cdpMgr.openLockAndDraw('ETH-A', ETH(1), MDAI(3));
   await cdpMgr.openLockAndDraw('ETH-A', ETH(2), MDAI(5));
-  cdpMgr.reset();
+  maker.service(ServiceRoles.CDP_TYPE).reset();
   const currentProxy = await maker.currentProxy();
   const totalDebt = await cdpMgr.getCombinedDebtValue(currentProxy);
   expect(totalDebt.toNumber()).toBeCloseTo(8, 1);
@@ -80,20 +81,6 @@ test('getCdp can disable prefetch', async () => {
     cache: false
   });
   expect(sameCdp._urnInfoPromise).toBeUndefined();
-});
-
-test('getCombinedEventHistory', async () => {
-  const proxy = await maker.currentProxy();
-  const mockFn = jest.fn(async () => dummyEventData('ETH-A'));
-  maker.service(
-    ServiceRoles.QUERY_API
-  ).getCdpEventsForArrayOfIlksAndUrns = mockFn;
-  const events = await cdpMgr.getCombinedEventHistory(proxy);
-  expect(mockFn).toBeCalled();
-  const GEM = maker
-    .service(ServiceRoles.CDP_TYPE)
-    .getCdpType(null, events[0].ilk).currency;
-  expect(events).toEqual(formattedDummyEventData(GEM, events[0].ilk));
 });
 
 test('transaction tracking for openLockAndDraw', async () => {
