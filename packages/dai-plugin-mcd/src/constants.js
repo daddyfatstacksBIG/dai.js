@@ -1,11 +1,11 @@
 import BigNumber from 'bignumber.js';
 
 export const ServiceRoles = {
-  CDP_MANAGER: 'mcd:cdpManager',
-  CDP_TYPE: 'mcd:cdpType',
-  AUCTION: 'mcd:auction',
-  SYSTEM_DATA: 'mcd:systemData',
-  SAVINGS: 'mcd:savings'
+  CDP_MANAGER : 'mcd:cdpManager',
+  CDP_TYPE : 'mcd:cdpType',
+  AUCTION : 'mcd:auction',
+  SYSTEM_DATA : 'mcd:systemData',
+  SAVINGS : 'mcd:savings'
 };
 
 export const WAD = new BigNumber('1e18');

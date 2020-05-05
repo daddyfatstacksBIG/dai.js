@@ -1,22 +1,19 @@
-import { mcdMaker } from '../helpers';
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
-import { isValidAddressString } from '../../src/utils';
-import testnetAddresses from '../../contracts/addresses/testnet';
+import {restoreSnapshot, takeSnapshot} from '@makerdao/test-helpers';
 
+import testnetAddresses from '../../contracts/addresses/testnet';
 import {
-  PRICE_FEED_ADDRESS,
   LIQUIDATION_RATIO,
+  PRICE_FEED_ADDRESS,
   RATIO_DAI_USD
 } from '../../src/schemas';
-
 import spotSchemas from '../../src/schemas/spot';
+import {isValidAddressString} from '../../src/utils';
+import {mcdMaker} from '../helpers';
 
 let maker, snapshotData;
 
 beforeAll(async () => {
-  maker = await mcdMaker({
-    multicall: true
-  });
+  maker = await mcdMaker({multicall : true});
 
   snapshotData = await takeSnapshot(maker);
   maker.service('multicall').createWatcher();
@@ -24,15 +21,13 @@ beforeAll(async () => {
   maker.service('multicall').start();
 });
 
-afterAll(async () => {
-  await restoreSnapshot(snapshotData, maker);
-});
+afterAll(async () => { await restoreSnapshot(snapshotData, maker); });
 
 test(PRICE_FEED_ADDRESS, async () => {
   const ethAPriceFeedAddress = await maker.latest(PRICE_FEED_ADDRESS, 'ETH-A');
   const batAPriceFeedAddress = await maker.latest(PRICE_FEED_ADDRESS, 'BAT-A');
 
-  const { PIP_ETH, PIP_BAT } = testnetAddresses;
+  const {PIP_ETH, PIP_BAT} = testnetAddresses;
 
   expect(isValidAddressString(ethAPriceFeedAddress)).toEqual(true);
   expect(isValidAddressString(batAPriceFeedAddress)).toEqual(true);
