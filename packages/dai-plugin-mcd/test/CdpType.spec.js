@@ -1,11 +1,11 @@
-import {createCurrencyRatio} from '@makerdao/currency';
+import { createCurrencyRatio } from '@makerdao/currency';
 
-import {BAT, ETH, MDAI, USD} from '../src';
-import {ServiceRoles} from '../src/constants';
+import { BAT, ETH, MDAI, USD } from '../src';
+import { ServiceRoles } from '../src/constants';
 
-import {mcdMaker, setupCollateral} from './helpers';
+import { mcdMaker, setupCollateral } from './helpers';
 
-const {CDP_MANAGER, CDP_TYPE} = ServiceRoles;
+const { CDP_MANAGER, CDP_TYPE } = ServiceRoles;
 
 let maker, service;
 
@@ -17,7 +17,10 @@ beforeAll(async () => {
 
 // these CDP types should be available to the Maker instance because
 // of the configuration passed into it (see test/helpers.js)
-const scenarios = [ [ 'ETH-A', ETH ], [ 'BAT-A', BAT ] ];
+const scenarios = [
+  ['ETH-A', ETH],
+  ['BAT-A', BAT],
+];
 
 /*
   The following arrays are expected values for each tested
@@ -26,9 +29,9 @@ const scenarios = [ [ 'ETH-A', ETH ], [ 'BAT-A', BAT ] ];
   liquidation penalty, annual stability fee]
 */
 const systemValues = {
-  'ETH-A' : [ 2, 4, 100000, 1.5, 0.05, '5.0' ],
+  'ETH-A': [2, 4, 100000, 1.5, 0.05, '5.0'],
   // 'ETH-B': [2, 4, 100000, 2, 0.05, '4.0'],
-  'BAT-A' : [ 2, 4, 5000, 2, 0.08, '10.5' ]
+  'BAT-A': [2, 4, 5000, 2, 0.08, '10.5'],
 };
 
 describe.each(scenarios)('%s', (ilk, GEM) => {
@@ -37,7 +40,7 @@ describe.each(scenarios)('%s', (ilk, GEM) => {
 
   beforeAll(async () => {
     ratio = createCurrencyRatio(USD, GEM);
-    await setupCollateral(maker, ilk, {price});
+    await setupCollateral(maker, ilk, { price });
 
     for (let i = 0; i < 2; i++) {
       await maker.service(CDP_MANAGER).openLockAndDraw(ilk, GEM(1), 2);
@@ -50,8 +53,9 @@ describe.each(scenarios)('%s', (ilk, GEM) => {
 
   test('get total collateral', () => {
     expect(cdpType.totalCollateral).toEqual(GEM(systemValues[ilk][0]));
-    expect(cdpType.totalCollateral.times(cdpType.price).toNumber())
-        .toEqual(USD(systemValues[ilk][0] * price).toNumber());
+    expect(cdpType.totalCollateral.times(cdpType.price).toNumber()).toEqual(
+      USD(systemValues[ilk][0] * price).toNumber()
+    );
   });
 
   test('get total debt', () => {
@@ -75,21 +79,26 @@ describe.each(scenarios)('%s', (ilk, GEM) => {
   });
 
   test('get annual stability fee', async () => {
-    expect((cdpType.annualStabilityFee * 100).toFixed(1))
-        .toBe(systemValues[ilk][5]);
+    expect((cdpType.annualStabilityFee * 100).toFixed(1)).toBe(
+      systemValues[ilk][5]
+    );
   });
 
-  test('get ilk id', () => { expect(cdpType.ilk).toBe(ilk); });
+  test('get ilk id', () => {
+    expect(cdpType.ilk).toBe(ilk);
+  });
 });
 
-test('get system-wide debt',
-     () => { expect(service.totalDebtAllCdpTypes.toNumber()).toBeCloseTo(8); });
+test('get system-wide debt', () => {
+  expect(service.totalDebtAllCdpTypes.toNumber()).toBeCloseTo(8);
+});
 
 test('get system-wide collateral value', () => {
   expect(service.totalCollateralValueAllCdpTypes.toNumber()).toBeCloseTo(40);
 });
 
 test('get system-wide collateralization ratio', async () => {
-  expect(service.totalCollateralizationRatioAllCdpTypes.toNumber())
-      .toBeCloseTo(5);
+  expect(service.totalCollateralizationRatioAllCdpTypes.toNumber()).toBeCloseTo(
+    5
+  );
 });

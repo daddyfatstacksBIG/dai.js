@@ -1,21 +1,21 @@
-import {createCurrencyRatio} from '@makerdao/currency';
-import {ETH, MDAI as DAI, USD} from '@makerdao/dai-plugin-mcd';
+import { createCurrencyRatio } from '@makerdao/currency';
+import { ETH, MDAI as DAI, USD } from '@makerdao/dai-plugin-mcd';
 import {
   mineBlocks,
   restoreSnapshot,
-  takeSnapshot
+  takeSnapshot,
 } from '@makerdao/test-helpers';
 
-import {MKR, SAI} from '../../src';
-import {Migrations, ServiceRoles} from '../../src/constants';
+import { MKR, SAI } from '../../src';
+import { Migrations, ServiceRoles } from '../../src/constants';
 import {
   drawSaiAndMigrateToDai,
   migrateSaiToDai,
   migrationMaker,
   placeLimitOrder,
-  setPrice
+  setPrice,
 } from '../helpers';
-import {mockCdpIds} from '../helpers/mocks';
+import { mockCdpIds } from '../helpers/mocks';
 
 let maker, migration, snapshotData;
 
@@ -36,9 +36,13 @@ describe('SCD to MCD CDP Migration', () => {
   });
 
   describe('checks', () => {
-    beforeEach(async () => { snapshotData = await takeSnapshot(maker); });
+    beforeEach(async () => {
+      snapshotData = await takeSnapshot(maker);
+    });
 
-    afterEach(async () => { await restoreSnapshot(snapshotData, maker); });
+    afterEach(async () => {
+      await restoreSnapshot(snapshotData, maker);
+    });
 
     test('if there are no cdps, return false', async () => {
       await mockCdpIds(maker);
@@ -46,65 +50,56 @@ describe('SCD to MCD CDP Migration', () => {
       expect(await migration.check()).toMatchObject({});
     });
 
-    test(
-        'if there are cdps owned by a proxy, but no cdps owned by the account, return true',
-        async () => {
-          await mockCdpIds(maker, {forProxy : [ {id : '123'} ]});
-          expect(await migration.check()).toMatchObject({
-            [await maker.currentProxy()] : [ {id : '123'} ],
-            [maker.currentAddress()] : []
-          });
-        });
+    test('if there are cdps owned by a proxy, but no cdps owned by the account, return true', async () => {
+      await mockCdpIds(maker, { forProxy: [{ id: '123' }] });
+      expect(await migration.check()).toMatchObject({
+        [await maker.currentProxy()]: [{ id: '123' }],
+        [maker.currentAddress()]: [],
+      });
+    });
 
-    test(
-        'if there are cdps owned by the account, but no cdps owned by a proxy, return true',
-        async () => {
-          await mockCdpIds(maker, {forAccount : [ {id : '123'} ]});
-          expect(await migration.check()).toMatchObject({
-            [await maker.currentProxy()] : [],
-            [maker.currentAddress()] : [ {id : '123'} ]
-          });
-        });
+    test('if there are cdps owned by the account, but no cdps owned by a proxy, return true', async () => {
+      await mockCdpIds(maker, { forAccount: [{ id: '123' }] });
+      expect(await migration.check()).toMatchObject({
+        [await maker.currentProxy()]: [],
+        [maker.currentAddress()]: [{ id: '123' }],
+      });
+    });
 
-    test('if there are both cdps owned by the account and proxy, return true',
-         async () => {
-           await mockCdpIds(
-               maker,
-               {forAccount : [ {id : '123'} ], forProxy : [ {id : '234'} ]});
-           expect(await migration.check()).toMatchObject({
-             [await maker.currentProxy()] : [ {id : '234'} ],
-             [maker.currentAddress()] : [ {id : '123'} ]
-           });
-         });
+    test('if there are both cdps owned by the account and proxy, return true', async () => {
+      await mockCdpIds(maker, {
+        forAccount: [{ id: '123' }],
+        forProxy: [{ id: '234' }],
+      });
+      expect(await migration.check()).toMatchObject({
+        [await maker.currentProxy()]: [{ id: '234' }],
+        [maker.currentAddress()]: [{ id: '123' }],
+      });
+    });
 
-    test('if there is no sai locked in the mcd migration cdp, return 0',
-         async () => {
-           const saiLiquidity = await migration.migrationSaiAvailable();
-           expect(saiLiquidity.toFixed('wei')).toBe('0');
-         });
+    test('if there is no sai locked in the mcd migration cdp, return 0', async () => {
+      const saiLiquidity = await migration.migrationSaiAvailable();
+      expect(saiLiquidity.toFixed('wei')).toBe('0');
+    });
 
-    test(
-        'if there is sai locked in the mcd migration cdp, return the amount that is there',
-        async () => {
-          await drawSaiAndMigrateToDai(
-              10, maker); // lock 10 sai into the migration cdp
-          const available = await migration.migrationSaiAvailable();
-          expect(available.toFixed('wei')).toBe('9999999999999999999');
-        });
+    test('if there is sai locked in the mcd migration cdp, return the amount that is there', async () => {
+      await drawSaiAndMigrateToDai(10, maker); // lock 10 sai into the migration cdp
+      const available = await migration.migrationSaiAvailable();
+      expect(available.toFixed('wei')).toBe('9999999999999999999');
+    });
 
-    test(
-        'if the headroom under the debt ceiling is smaller than the sai locked, return that amount',
-        async () => {
-          await drawSaiAndMigrateToDai(1000, maker);
-          await setPrice(maker, createCurrencyRatio(USD, ETH)(100000), 'ETH-A');
+    test('if the headroom under the debt ceiling is smaller than the sai locked, return that amount', async () => {
+      await drawSaiAndMigrateToDai(1000, maker);
+      await setPrice(maker, createCurrencyRatio(USD, ETH)(100000), 'ETH-A');
 
-          // this expects the debt ceiling to be 100000
-          await maker.service('mcd:cdpManager')
-              .openLockAndDraw('ETH-A', ETH(2), DAI(99998));
+      // this expects the debt ceiling to be 100000
+      await maker
+        .service('mcd:cdpManager')
+        .openLockAndDraw('ETH-A', ETH(2), DAI(99998));
 
-          const available = await migration.migrationSaiAvailable();
-          expect(available.toFixed('wei')).toBe('1999999999999999999');
-        });
+      const available = await migration.migrationSaiAvailable();
+      expect(available.toFixed('wei')).toBe('1999999999999999999');
+    });
 
     test('saiAmountNeededToBuyMkr', async () => {
       await placeLimitOrder(migration._manager);
@@ -113,7 +108,7 @@ describe('SCD to MCD CDP Migration', () => {
     });
   });
 
-  describe.each([ 'MKR', 'DEBT', 'GEM' ])('pay with %s', payment => {
+  describe.each(['MKR', 'DEBT', 'GEM'])('pay with %s', (payment) => {
     let cdp, proxyAddress;
 
     beforeEach(async () => {
@@ -125,7 +120,9 @@ describe('SCD to MCD CDP Migration', () => {
       await migrateSaiToDai(50, maker);
     });
 
-    afterEach(async () => { await restoreSnapshot(snapshotData, maker); });
+    afterEach(async () => {
+      await restoreSnapshot(snapshotData, maker);
+    });
 
     test('execute', async () => {
       let maxPayAmount, minRatio;
@@ -134,8 +131,7 @@ describe('SCD to MCD CDP Migration', () => {
         await placeLimitOrder(migration._manager);
         maxPayAmount = 10;
       }
-      if (payment === 'DEBT')
-        minRatio = 150;
+      if (payment === 'DEBT') minRatio = 150;
       await maker.service('price').setMkrPrice(100);
 
       const manager = maker.service('mcd:cdpManager');
@@ -146,8 +142,12 @@ describe('SCD to MCD CDP Migration', () => {
 
       const mcdCdpsBeforeMigration = await manager.getCdpIds(proxyAddress);
 
-      const newId =
-          await migration.execute(cdp.id, payment, maxPayAmount, minRatio);
+      const newId = await migration.execute(
+        cdp.id,
+        payment,
+        maxPayAmount,
+        minRatio
+      );
       await manager.reset();
 
       const mcdCdpsAfterMigration = await manager.getCdpIds(proxyAddress);
@@ -171,8 +171,9 @@ describe('SCD to MCD CDP Migration', () => {
 
       expect(message).toEqual("That CDP doesn't exist--try opening a new one.");
 
-      expect(mcdCdpsAfterMigration.length)
-          .toEqual(mcdCdpsBeforeMigration.length + 1);
+      expect(mcdCdpsAfterMigration.length).toEqual(
+        mcdCdpsBeforeMigration.length + 1
+      );
     });
   });
 });

@@ -1,17 +1,17 @@
-import {restoreSnapshot, takeSnapshot} from '@makerdao/test-helpers';
+import { restoreSnapshot, takeSnapshot } from '@makerdao/test-helpers';
 import BigNumber from 'bignumber.js';
 
-import {BAT, ETH, MDAI} from '../../src';
-import {ServiceRoles} from '../../src/constants';
+import { BAT, ETH, MDAI } from '../../src';
+import { ServiceRoles } from '../../src/constants';
 import {
   TOTAL_OWNED_VAULTS,
   VAULT_ADDRESS,
   VAULT_OWNER,
   VAULT_TYPE,
-  VAULTS_CREATED
+  VAULTS_CREATED,
 } from '../../src/schemas';
 import cdpManagerSchemas from '../../src/schemas/cdpManager';
-import {mcdMaker, setupCollateral} from '../helpers';
+import { mcdMaker, setupCollateral } from '../helpers';
 
 let maker, snapshotData, cdpMgr, proxyAddress, expectedVaultAddress;
 
@@ -21,28 +21,35 @@ const ETH_A_PRICE = 180;
 
 beforeAll(async () => {
   maker = await mcdMaker({
-    cdpTypes :
-        [ {currency : ETH, ilk : 'ETH-A'}, {currency : BAT, ilk : 'BAT-A'} ],
-    multicall : true
+    cdpTypes: [
+      { currency: ETH, ilk: 'ETH-A' },
+      { currency: BAT, ilk: 'BAT-A' },
+    ],
+    multicall: true,
   });
 
   snapshotData = await takeSnapshot(maker);
   maker.service('multicall').createWatcher();
   maker.service('multicall').registerSchemas(cdpManagerSchemas);
   maker.service('multicall').start();
-  await setupCollateral(maker, 'ETH-A', {price : ETH_A_PRICE});
+  await setupCollateral(maker, 'ETH-A', { price: ETH_A_PRICE });
 
   cdpMgr = await maker.service(ServiceRoles.CDP_MANAGER);
   const dai = maker.getToken(MDAI);
   proxyAddress = await maker.service('proxy').ensureProxy();
   await dai.approveUnlimited(proxyAddress);
 
-  const vault = await cdpMgr.openLockAndDraw('ETH-A', ETH_A_COLLATERAL_AMOUNT,
-                                             ETH_A_DEBT_AMOUNT);
+  const vault = await cdpMgr.openLockAndDraw(
+    'ETH-A',
+    ETH_A_COLLATERAL_AMOUNT,
+    ETH_A_DEBT_AMOUNT
+  );
   expectedVaultAddress = await cdpMgr.getUrn(vault.id);
 });
 
-afterAll(async () => { await restoreSnapshot(snapshotData, maker); });
+afterAll(async () => {
+  await restoreSnapshot(snapshotData, maker);
+});
 
 test(VAULT_ADDRESS, async () => {
   const cdpId = 1;
