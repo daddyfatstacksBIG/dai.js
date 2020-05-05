@@ -1,63 +1,67 @@
-import { mcdMaker, setupCollateral } from '../helpers';
-import { ETH, BAT, MDAI, USD } from '../../src';
+import { createCurrencyRatio } from '@makerdao/currency';
 import {
-  takeSnapshot,
+  mineBlocks,
   restoreSnapshot,
+  takeSnapshot,
   TestAccountProvider,
-  mineBlocks
 } from '@makerdao/test-helpers';
-import { fromWei, isValidAddressString } from '../../src/utils';
-import { ServiceRoles } from '../../src/constants';
 import BigNumber from 'bignumber.js';
 
+import { BAT, ETH, MDAI, USD } from '../../src';
+import { ServiceRoles } from '../../src/constants';
 import {
-  COLLATERAL_TYPE_PRICE,
-  COLLATERAL_TYPES_PRICES,
-  DEFAULT_COLLATERAL_TYPES_PRICES,
-  VAULT_TYPE_AND_ADDRESS,
-  VAULT_EXTERNAL_OWNER,
-  VAULT,
-  DEBT_VALUE,
-  COLLATERALIZATION_RATIO,
+  ALLOWANCE,
+  BALANCE,
   COLLATERAL_AMOUNT,
-  COLLATERAL_VALUE,
-  LIQUIDATION_PRICE,
-  DAI_AVAILABLE,
-  MIN_SAFE_COLLATERAL_AMOUNT,
   COLLATERAL_AVAILABLE_AMOUNT,
   COLLATERAL_AVAILABLE_VALUE,
-  DAI_LOCKED_IN_DSR,
-  TOTAL_DAI_LOCKED_IN_DSR,
-  BALANCE,
-  ALLOWANCE,
-  USER_VAULTS_LIST,
-  PROXY_OWNER,
   COLLATERAL_TYPE_DATA,
-  COLLATERAL_TYPES_DATA
+  COLLATERAL_TYPE_PRICE,
+  COLLATERAL_TYPES_DATA,
+  COLLATERAL_TYPES_PRICES,
+  COLLATERAL_VALUE,
+  COLLATERALIZATION_RATIO,
+  DAI_AVAILABLE,
+  DAI_LOCKED_IN_DSR,
+  DEBT_VALUE,
+  DEFAULT_COLLATERAL_TYPES_PRICES,
+  LIQUIDATION_PRICE,
+  MIN_SAFE_COLLATERAL_AMOUNT,
+  PROXY_OWNER,
+  TOTAL_DAI_LOCKED_IN_DSR,
+  USER_VAULTS_LIST,
+  VAULT,
+  VAULT_EXTERNAL_OWNER,
+  VAULT_TYPE_AND_ADDRESS,
 } from '../../src/schemas';
-
-import { vatIlks, vatUrns, vatGem } from '../../src/schemas/vat';
-import {
-  cdpManagerUrns,
-  cdpManagerIlks,
-  cdpManagerOwner
-} from '../../src/schemas/cdpManager';
-import { spotIlks, spotPar } from '../../src/schemas/spot';
-import { proxyRegistryProxies } from '../../src/schemas/proxyRegistry';
-import { potPie, potpie, potChi } from '../../src/schemas/pot';
 import { catIlks } from '../../src/schemas/cat';
-import { jugIlks } from '../../src/schemas/jug';
 import {
-  tokenBalance,
-  tokenAllowance,
-  tokenAllowanceBase
-} from '../../src/schemas/token';
-import { getCdps } from '../../src/schemas/getCdps';
+  cdpManagerIlks,
+  cdpManagerOwner,
+  cdpManagerUrns,
+} from '../../src/schemas/cdpManager';
 import computedSchemas from '../../src/schemas/computed';
+import { getCdps } from '../../src/schemas/getCdps';
+import { jugIlks } from '../../src/schemas/jug';
+import { potChi, potPie, potpie } from '../../src/schemas/pot';
+import { proxyRegistryProxies } from '../../src/schemas/proxyRegistry';
+import { spotIlks, spotPar } from '../../src/schemas/spot';
+import {
+  tokenAllowance,
+  tokenAllowanceBase,
+  tokenBalance,
+} from '../../src/schemas/token';
+import { vatGem, vatIlks, vatUrns } from '../../src/schemas/vat';
+import { fromWei, isValidAddressString } from '../../src/utils';
+import { mcdMaker, setupCollateral } from '../helpers';
 
-import { createCurrencyRatio } from '@makerdao/currency';
-
-let maker, snapshotData, address, address2, proxyAddress, expectedVaultAddress;
+let maker,
+  multicall,
+  snapshotData,
+  address,
+  address2,
+  proxyAddress,
+  expectedVaultAddress;
 
 const ETH_A_COLLATERAL_AMOUNT = ETH(1);
 const ETH_A_DEBT_AMOUNT = MDAI(1);
@@ -72,15 +76,15 @@ beforeAll(async () => {
   maker = await mcdMaker({
     cdpTypes: [
       { currency: ETH, ilk: 'ETH-A' },
-      { currency: BAT, ilk: 'BAT-A' }
+      { currency: BAT, ilk: 'BAT-A' },
     ],
-    multicall: true
+    multicall: true,
   });
   address = maker.service('web3').currentAddress();
   address2 = TestAccountProvider.nextAccount().address;
-
-  maker.service('multicall').createWatcher();
-  maker.service('multicall').registerSchemas({
+  multicall = maker.service('multicall');
+  multicall.createWatcher();
+  multicall.registerSchemas({
     vatIlks,
     vatUrns,
     vatGem,
@@ -99,13 +103,11 @@ beforeAll(async () => {
     tokenAllowance,
     tokenAllowanceBase,
     getCdps,
-    ...computedSchemas
+    ...computedSchemas,
   });
-  maker.service('multicall').start();
+  multicall.start();
 
-  await setupCollateral(maker, 'ETH-A', {
-    price: ETH_A_PRICE
-  });
+  await setupCollateral(maker, 'ETH-A', { price: ETH_A_PRICE });
   await setupCollateral(maker, 'BAT-A', { price: BAT_A_PRICE });
 
   const mgr = await maker.service(ServiceRoles.CDP_MANAGER);
@@ -134,6 +136,42 @@ afterAll(async () => {
   await restoreSnapshot(snapshotData, maker);
 });
 
+test(DAI_LOCKED_IN_DSR, async () => {
+  const daiLockedInDsr = await maker.latest(DAI_LOCKED_IN_DSR, address);
+  expect(daiLockedInDsr.symbol).toEqual('DSR-DAI');
+  expect(daiLockedInDsr.toNumber()).toBeCloseTo(1, 18);
+});
+
+test(`${DAI_LOCKED_IN_DSR} using invalid account address`, async () => {
+  const promise = maker.latest(DAI_LOCKED_IN_DSR, '0xfoobar');
+  await expect(promise).rejects.toThrow(/invalid/i);
+});
+
+test(`${DAI_LOCKED_IN_DSR} before and after account has proxy`, async () => {
+  const nextAccount = TestAccountProvider.nextAccount();
+  await maker.addAccount({ ...nextAccount, type: 'privateKey' });
+  maker.useAccount(nextAccount.address);
+
+  const promise = maker.latest(DAI_LOCKED_IN_DSR, nextAccount.address);
+  await expect(promise).rejects.toThrow(/invalid/i);
+
+  await maker.service('proxy').ensureProxy();
+  await mineBlocks(maker.service('token'), 1);
+
+  const daiLockedInDsr = await maker.latest(
+    DAI_LOCKED_IN_DSR,
+    nextAccount.address
+  );
+  expect(daiLockedInDsr.symbol).toEqual('DSR-DAI');
+  expect(daiLockedInDsr.toNumber()).toEqual(0);
+});
+
+test(TOTAL_DAI_LOCKED_IN_DSR, async () => {
+  const totalDaiLockedInDsr = await maker.latest(TOTAL_DAI_LOCKED_IN_DSR);
+  expect(totalDaiLockedInDsr.symbol).toEqual('DSR-DAI');
+  expect(totalDaiLockedInDsr.toNumber()).toBeCloseTo(1, 18);
+});
+
 test(COLLATERAL_TYPE_PRICE, async () => {
   const ethAPrice = await maker.latest(COLLATERAL_TYPE_PRICE, 'ETH-A');
   expect(ethAPrice.toNumber()).toEqual(180);
@@ -143,7 +181,7 @@ test(COLLATERAL_TYPE_PRICE, async () => {
 test(COLLATERAL_TYPES_PRICES, async () => {
   const [ethAPrice, batAPrice] = await maker.latest(COLLATERAL_TYPES_PRICES, [
     'ETH-A',
-    'BAT-A'
+    'BAT-A',
   ]);
 
   expect(ethAPrice.toNumber()).toEqual(180);
@@ -333,32 +371,8 @@ test(`${VAULT} with non-existent id`, async () => {
 
 test(`${VAULT} with invalid id`, async () => {
   const cdpId = -9000;
-  expect(() => {
-    maker.latest(VAULT, cdpId);
-  }).toThrow(/invalid vault id/i);
-});
-
-test(DAI_LOCKED_IN_DSR, async () => {
-  const daiLockedInDsr = await maker.latest(DAI_LOCKED_IN_DSR, address);
-  expect(daiLockedInDsr.symbol).toEqual('DSR-DAI');
-  expect(daiLockedInDsr.toNumber()).toBeCloseTo(1, 18);
-});
-
-test.skip(`${DAI_LOCKED_IN_DSR} using invalid account address`, async () => {
-  expect(() => {
-    maker.latest(DAI_LOCKED_IN_DSR, '0xfoobar');
-  }).toThrow(/invalid/i);
-});
-
-test.skip(`${DAI_LOCKED_IN_DSR} using account with no proxy`, async () => {
-  const promise = maker.latest(DAI_LOCKED_IN_DSR, address2);
-  await expect(promise).rejects.toThrow();
-});
-
-test(TOTAL_DAI_LOCKED_IN_DSR, async () => {
-  const totalDaiLockedInDsr = await maker.latest(TOTAL_DAI_LOCKED_IN_DSR);
-  expect(totalDaiLockedInDsr.symbol).toEqual('DSR-DAI');
-  expect(totalDaiLockedInDsr.toNumber()).toBeCloseTo(1, 18);
+  const vault = maker.latest(VAULT, cdpId);
+  await expect(vault).rejects.toThrow(/invalid vault id/i);
 });
 
 test(BALANCE, async () => {
@@ -423,6 +437,16 @@ test(ALLOWANCE, async () => {
   maker.useAccount('default');
 });
 
+test(`${ALLOWANCE} using invalid account address`, async () => {
+  const promise = maker.latest(ALLOWANCE, 'BAT', null);
+  await expect(promise).rejects.toThrow(/invalid address/i);
+});
+
+test(`${ALLOWANCE} for account with no proxy`, async () => {
+  const promise = maker.latest(ALLOWANCE, 'BAT', address2);
+  await expect(promise).rejects.toThrow(/invalid proxy/i);
+});
+
 test(USER_VAULTS_LIST, async () => {
   const [batVault, ethVault] = await maker.latest(USER_VAULTS_LIST, address);
 
@@ -438,6 +462,16 @@ test(USER_VAULTS_LIST, async () => {
   expect(ethVault.vaultAddress).toEqual(
     '0x6D43e8f5A6D2b5aD2b242A1D3CF957C71AfC48a1'
   );
+});
+
+test(`${USER_VAULTS_LIST} for account with no proxy`, async () => {
+  const promise = maker.latest(USER_VAULTS_LIST, address2);
+  await expect(promise).rejects.toThrow(/invalid/i);
+});
+
+test(`${USER_VAULTS_LIST} for account with no proxy`, async () => {
+  const promise = maker.latest(USER_VAULTS_LIST, address2);
+  await expect(promise).rejects.toThrow(/invalid/i);
 });
 
 test(PROXY_OWNER, async () => {
@@ -477,7 +511,7 @@ test(COLLATERAL_TYPE_DATA, async () => {
 test(COLLATERAL_TYPES_DATA, async () => {
   const [ethAData, batAData] = await maker.latest(COLLATERAL_TYPES_DATA, [
     'ETH-A',
-    'BAT-A'
+    'BAT-A',
   ]);
 
   const expectedEth = await maker.latest(COLLATERAL_TYPE_DATA, 'ETH-A');

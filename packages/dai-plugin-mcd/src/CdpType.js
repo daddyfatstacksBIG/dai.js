@@ -1,8 +1,9 @@
 import assert from 'assert';
+
 import { ServiceRoles } from './constants';
-import { stringToBytes } from './utils';
-import { MDAI, ETH, MWETH } from './index';
+import { ETH, MDAI, MWETH } from './index';
 import * as math from './math';
+import { stringToBytes } from './utils';
 
 export default class CdpType {
   constructor(
@@ -28,9 +29,7 @@ export default class CdpType {
 
   get totalDebt() {
     const { Art, rate } = this._getCached('vatInfo');
-    return MDAI.wei(Art)
-      .times(rate)
-      .shiftedBy(-27);
+    return MDAI.wei(Art).times(rate).shiftedBy(-27);
   }
 
   get debtCeiling() {
@@ -58,22 +57,6 @@ export default class CdpType {
     return math.annualStabilityFee(this._getCached('jugInfo').duty);
   }
 
-  async getPriceHistory(num = 100) {
-    const prices = await this._cdpTypeService
-      .get(ServiceRoles.QUERY_API)
-      .getPriceHistoryForPip(this._pipAddress, num);
-    return Promise.all(
-      prices.map(async e => {
-        const price = this.currency.wei(e.val);
-        //todo: update this query to read the datetime directly from vdb once vdb is updated with that functionality
-        const timestamp = (await this._web3Service.getBlock(e.blockNumber))
-          .timestamp;
-        const time = new Date(1000 * timestamp);
-        return { price, time };
-      })
-    );
-  }
-
   async ilkInfo(contract = 'vat') {
     return this._systemData[contract].ilks(this._ilkBytes);
   }
@@ -95,12 +78,12 @@ export default class CdpType {
           .get('token')
           .getToken(symbol)
           .balanceOf(adapterAddress)
-          .then(x => (this.cache.adapterBalance = x)),
-        this.ilkInfo().then(x => (this.cache.vatInfo = x)),
-        this.ilkInfo('cat').then(x => (this.cache.catInfo = x)),
-        this.ilkInfo('jug').then(x => (this.cache.jugInfo = x)),
-        this.ilkInfo('spot').then(x => (this.cache.spotInfo = x)),
-        this._systemData.spot.par().then(x => (this.cache.par = x))
+          .then((x) => (this.cache.adapterBalance = x)),
+        this.ilkInfo().then((x) => (this.cache.vatInfo = x)),
+        this.ilkInfo('cat').then((x) => (this.cache.catInfo = x)),
+        this.ilkInfo('jug').then((x) => (this.cache.jugInfo = x)),
+        this.ilkInfo('spot').then((x) => (this.cache.spotInfo = x)),
+        this._systemData.spot.par().then((x) => (this.cache.par = x)),
       ]);
     }
     return this._prefetchPromise;

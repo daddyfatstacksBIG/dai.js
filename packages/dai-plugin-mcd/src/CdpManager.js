@@ -1,18 +1,18 @@
 import { Currency } from '@makerdao/currency';
 import { LocalService } from '@makerdao/services-core';
-import tracksTransactions, {
-  tracksTransactionsWithOptions
-} from './utils/tracksTransactions';
-import { ServiceRoles } from './constants';
 import assert from 'assert';
-import ManagedCdp from './ManagedCdp';
-import { castAsCurrency, stringToBytes, bytesToString } from './utils';
 import has from 'lodash/has';
 import padStart from 'lodash/padStart';
-import { MDAI, ETH, GNT } from './index';
-const { CDP_MANAGER, CDP_TYPE, SYSTEM_DATA, QUERY_API } = ServiceRoles;
-import BigNumber from 'bignumber.js';
-import { RAY } from './constants';
+
+import { ServiceRoles } from './constants';
+import { ETH, GNT, MDAI } from './index';
+import ManagedCdp from './ManagedCdp';
+import { bytesToString, castAsCurrency, stringToBytes } from './utils';
+import tracksTransactions, {
+  tracksTransactionsWithOptions,
+} from './utils/tracksTransactions';
+
+const { CDP_MANAGER, CDP_TYPE, SYSTEM_DATA } = ServiceRoles;
 import getEventHistoryImpl from './EventHistory';
 
 export default class CdpManager extends LocalService {
@@ -21,11 +21,10 @@ export default class CdpManager extends LocalService {
       'smartContract',
       CDP_TYPE,
       SYSTEM_DATA,
-      QUERY_API,
       'accounts',
       'proxy',
       'token',
-      'web3'
+      'web3',
     ]);
     this._getCdpIdsPromises = {};
     this._getUrnPromises = {};
@@ -36,7 +35,7 @@ export default class CdpManager extends LocalService {
     if (!this._getCdpIdsPromises[proxyAddress]) {
       this._getCdpIdsPromises[proxyAddress] = this.get('smartContract')
         .getContract('GET_CDPS')
-        //eslint-disable-next-line no-unexpected-multiline
+        // eslint-disable-next-line no-unexpected-multiline
         [getCdpsMethod](this._managerAddress, proxyAddress);
     }
     const [ids, , ilks] = await this._getCdpIdsPromises[proxyAddress];
@@ -65,27 +64,12 @@ export default class CdpManager extends LocalService {
   async getCombinedDebtValue(proxyAddress, descending = true) {
     const ids = await this.getCdpIds(proxyAddress, descending);
     const debts = await Promise.all(
-      ids.map(c => {
+      ids.map((c) => {
         const cdp = new ManagedCdp(c.id, c.ilk, this);
         return cdp.prefetch().then(() => cdp.debtValue);
       })
     );
     return debts.reduce((a, b) => a.plus(b));
-  }
-
-  async getCombinedEventHistory(proxyAddress) {
-    const cdpIds = await this.getCdpIds(proxyAddress);
-    const ilksAndUrns = await Promise.all(
-      cdpIds.map(async c => {
-        const urn = await this.getUrn(c.id);
-        const ilk = stringToBytes(c.ilk);
-        return { urn, ilk };
-      })
-    );
-    const events = await this.get(QUERY_API).getCdpEventsForArrayOfIlksAndUrns(
-      ilksAndUrns
-    );
-    return this.parseFrobEvents(events, this.get(CDP_TYPE));
   }
 
   @tracksTransactions
@@ -125,7 +109,7 @@ export default class CdpManager extends LocalService {
   ) {
     const type = this.get(CDP_TYPE).getCdpType(lockAmount.type, ilk);
     const op = this.lockAndDraw(null, type.ilk, lockAmount, drawAmount, {
-      promise
+      promise,
     });
     const cdp = await ManagedCdp.create(await op, type.ilk, this);
     this._putInInstanceCache(cdp.id, cdp, cache);
@@ -157,9 +141,9 @@ export default class CdpManager extends LocalService {
         dsProxy: true,
         value: isEth ? lockAmount.toFixed('wei') : 0,
         promise,
-        metadata: { id, ilk, lockAmount, drawAmount }
-      }
-    ].filter(x => x);
+        metadata: { id, ilk, lockAmount, drawAmount },
+      },
+    ].filter((x) => x);
 
     // If opening a new GNT CDP, GNT must first be transferred
     // to the proxy (so it can be transferred to the new bag)
@@ -193,9 +177,9 @@ export default class CdpManager extends LocalService {
         dsProxy: true,
         value: isEth ? lockAmount.toFixed('wei') : 0,
         promise,
-        metadata: { id, ilk, lockAmount }
-      }
-    ].filter(x => x);
+        metadata: { id, ilk, lockAmount },
+      },
+    ].filter((x) => x);
 
     // Transfers to bag if locking GNT in existing CDP
     if (id && isGnt) await transferToBag(lockAmount, proxyAddress, this);
@@ -228,7 +212,11 @@ export default class CdpManager extends LocalService {
       this.getIdBytes(id),
       freeAmount.toFixed(this._precision(freeAmount)),
       wipeAmount.toFixed('wei'),
-      { dsProxy: true, promise, metadata: { id, ilk, wipeAmount, freeAmount } }
+      {
+        dsProxy: true,
+        promise,
+        metadata: { id, ilk, wipeAmount, freeAmount },
+      }
     );
   }
 
@@ -326,42 +314,6 @@ export default class CdpManager extends LocalService {
     return this._manager.owns(this.getIdBytes(id));
   }
 
-  parseFrobEvents(events) {
-    return events.map(e => {
-      const ilk = e.ilkIdentifier;
-      const currency = this.get(CDP_TYPE).getCdpType(null, ilk).currency;
-      const transactionHash = e.tx.transactionHash;
-      const rate = new BigNumber(e.ilkRate.toString()).dividedBy(RAY);
-      const changeInCollateral = currency.wei(Math.abs(e.dink));
-      let collateralAction;
-      if (parseInt(e.dink) !== 0) {
-        collateralAction = parseInt(e.dink) > 0 ? 'lock' : 'free';
-      }
-      const dart = MDAI.wei(Math.abs(e.dart));
-      const changeInDai = dart.times(rate);
-      let daiAction;
-      if (parseInt(e.dart) !== 0) {
-        daiAction = parseInt(e.dart) > 0 ? 'draw' : 'wipe';
-      }
-      const time = new Date(e.tx.era.iso);
-      const senderAddress = e.tx.txFrom;
-      //const resultingCollateral = currency.wei(e.urn.nodes[0].ink);
-      //const resultingDebt = MDAI.wei(e.urn.nodes[0].art);
-      return {
-        transactionHash,
-        changeInCollateral,
-        collateralAction,
-        changeInDai,
-        daiAction,
-        ilk,
-        time,
-        senderAddress
-        //resultingCollateral,
-        //resultingDebt
-      };
-    });
-  }
-
   getIdBytes(id, prefix = true) {
     assert(typeof id === 'number', 'ID must be a number');
     return (prefix ? '0x' : '') + padStart(id.toString(16), 24, '0');
@@ -424,7 +376,7 @@ export default class CdpManager extends LocalService {
     const { NewCdp } = managerContract.interface.events;
     const topic = web3.utils.keccak256(web3.utils.toHex(NewCdp.signature));
     const receiptEvent = logs.filter(
-      e => e.topics[0].toLowerCase() === topic.toLowerCase()
+      (e) => e.topics[0].toLowerCase() === topic.toLowerCase()
     );
     const parsedLog = NewCdp.parse(
       receiptEvent[0].topics,

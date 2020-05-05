@@ -1,10 +1,10 @@
+import originalAddresses from '../../contracts/addresses/testnet';
 import contracts from '../../contracts/contracts';
 import tokens from '../../contracts/tokens';
 import {
   buildTestService,
-  buildTestSmartContractService
+  buildTestSmartContractService,
 } from '../helpers/serviceBuilders';
-import originalAddresses from '../../contracts/addresses/testnet';
 
 test('getContract should have proper error checking', async () => {
   const service = buildTestSmartContractService();
@@ -18,14 +18,17 @@ test('getContract should have proper error checking', async () => {
 
   await service.manager().authenticate();
   expect(() =>
-    service.getContract(contracts.SAI_TOP, { version: 999 })
+    service.getContract(contracts.SAI_TOP, {
+      version: 999,
+    })
   ).toThrow(new Error('Cannot find contract SAI_TOP, version 999'));
 });
 
 test('getContract should return a functioning contract', async () => {
   const service = buildTestSmartContractService();
   await service.manager().authenticate();
-  // Read the PETH address by calling TOP.skr(). Confirm that it's the same as the configured address.
+  // Read the PETH address by calling TOP.skr(). Confirm that it's the same as
+  // the configured address.
   const gem = await service.getContract(contracts.SAI_TOP).gem();
 
   expect(gem.toString().toUpperCase()).toEqual(
@@ -40,21 +43,17 @@ const mockAbi = {
   outputs: [{ name: '', type: 'bytes32' }],
   payable: false,
   stateMutability: 'view',
-  type: 'function'
+  type: 'function',
 };
 
 test('define contract in config', async () => {
   const mockContractDefinition = {
     address: '0xbeefed1bedded2dabbed3defaced4decade5dead',
-    abi: [mockAbi]
+    abi: [mockAbi],
   };
 
   const service = buildTestService('smartContract', {
-    smartContract: {
-      addContracts: {
-        mock: mockContractDefinition
-      }
-    }
+    smartContract: { addContracts: { mock: mockContractDefinition } },
   });
 
   await service.manager().authenticate();
@@ -68,9 +67,9 @@ test('define contracts in config with multiple addresses', async () => {
     address: {
       testnet: '0xbeefed1bedded2dabbed3defaced4decade5dead',
       kovan: '0xbeefed1bedded2dabbed3defaced4decade5caca',
-      mainnet: '0xbeefed1bedded2dabbed3defaced4decade5feed'
+      mainnet: '0xbeefed1bedded2dabbed3defaced4decade5feed',
     },
-    abi: [mockAbi]
+    abi: [mockAbi],
   };
 
   const service = buildTestService('smartContract', {
@@ -78,13 +77,11 @@ test('define contracts in config with multiple addresses', async () => {
       addContracts: {
         mock: mockContractDefinition,
         mock2: {
-          address: {
-            kovan: '0xbeefed1bedded2dabbed3defaced4decade5caca'
-          },
-          abi: [mockAbi]
-        }
-      }
-    }
+          address: { kovan: '0xbeefed1bedded2dabbed3defaced4decade5caca' },
+          abi: [mockAbi],
+        },
+      },
+    },
   });
 
   await service.manager().authenticate();
@@ -119,11 +116,7 @@ test('call constant function without account', async () => {
 
 test('addressOverrides', async () => {
   const service = buildTestService('smartContract', {
-    smartContract: {
-      addressOverrides: {
-        PROXY_REGISTRY: '0xmock'
-      }
-    }
+    smartContract: { addressOverrides: { PROXY_REGISTRY: '0xmock' } },
   });
 
   await service.manager().authenticate();
@@ -137,12 +130,9 @@ test('network-specific addressOverrides', async () => {
   const service = buildTestService('smartContract', {
     smartContract: {
       addressOverrides: {
-        PROXY_REGISTRY: {
-          mainnet: '0xmock1',
-          testnet: '0xmock2'
-        }
-      }
-    }
+        PROXY_REGISTRY: { mainnet: '0xmock1', testnet: '0xmock2' },
+      },
+    },
   });
 
   await service.manager().authenticate();
@@ -155,15 +145,25 @@ test('network-specific addressOverrides', async () => {
 test('fallback if addressOverrides does not specify current network', async () => {
   const service = buildTestService('smartContract', {
     smartContract: {
-      addressOverrides: {
-        PROXY_REGISTRY: {
-          mainnet: '0xmock1'
-        }
-      }
-    }
+      addressOverrides: { PROXY_REGISTRY: { mainnet: '0xmock1' } },
+    },
   });
 
   await service.manager().authenticate();
   const addresses = service.getContractAddresses();
   expect(addresses.PROXY_REGISTRY).toEqual(originalAddresses.PROXY_REGISTRY);
+});
+
+test('can use address overrides for contract info', async () => {
+  const service = buildTestService('smartContract', {
+    smartContract: {
+      addressOverrides: { PROXY_REGISTRY: { rinkeby: '0xmock1' } },
+    },
+  });
+
+  service.get('web3').networkId = () => 4;
+  service.get('web3');
+  await service.manager().authenticate();
+  const addresses = service.getContractAddresses();
+  expect(addresses.PROXY_REGISTRY).toEqual('0xmock1');
 });

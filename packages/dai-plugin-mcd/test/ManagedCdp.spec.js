@@ -1,11 +1,12 @@
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
-import { mcdMaker, setupCollateral } from './helpers';
-import { ETH, MDAI, USD, BAT, GNT, DGD } from '../src';
-import { ServiceRoles } from '../src/constants';
-import { dummyEventData, formattedDummyEventData } from './fixtures';
 import { createCurrencyRatio } from '@makerdao/currency';
+import { restoreSnapshot, takeSnapshot } from '@makerdao/test-helpers';
 
-const { CDP_MANAGER, QUERY_API } = ServiceRoles;
+import { BAT, DGD, ETH, GNT, MDAI, USD } from '../src';
+import { ServiceRoles } from '../src/constants';
+
+import { mcdMaker, setupCollateral } from './helpers';
+
+const { CDP_MANAGER } = ServiceRoles;
 
 let dai, maker, proxy, snapshotData, txMgr;
 
@@ -15,8 +16,8 @@ beforeAll(async () => {
       { currency: ETH, ilk: 'ETH-A' },
       { currency: BAT, ilk: 'BAT-A' },
       { currency: DGD, ilk: 'DGD-A', decimals: 9 },
-      { currency: GNT, ilk: 'GNT-A' }
-    ]
+      { currency: GNT, ilk: 'GNT-A' },
+    ],
   });
   dai = maker.getToken(MDAI);
   // the current account has a proxy only because the testchain setup script
@@ -75,7 +76,7 @@ async function expectValues(
     collateralValue,
     ratio,
     isSafe,
-    daiAvailable
+    daiAvailable,
   }
 ) {
   if (collateral !== undefined) {
@@ -123,23 +124,27 @@ describe.each([
   [
     'ETH-A',
     ETH,
-    async () => setupCollateral(maker, 'ETH-A', { price: 150, debtCeiling: 50 })
+    async () =>
+      setupCollateral(maker, 'ETH-A', { price: 150, debtCeiling: 50 }),
   ],
   [
     'BAT-A',
     BAT,
-    async () => setupCollateral(maker, 'BAT-A', { price: 100, debtCeiling: 50 })
+    async () =>
+      setupCollateral(maker, 'BAT-A', { price: 100, debtCeiling: 50 }),
   ],
   [
     'GNT-A',
     GNT,
-    async () => setupCollateral(maker, 'GNT-A', { price: 100, debtCeiling: 50 })
+    async () =>
+      setupCollateral(maker, 'GNT-A', { price: 100, debtCeiling: 50 }),
   ],
   [
     'DGD-A',
     DGD,
-    async () => setupCollateral(maker, 'DGD-A', { price: 100, debtCeiling: 50 })
-  ]
+    async () =>
+      setupCollateral(maker, 'DGD-A', { price: 100, debtCeiling: 50 }),
+  ],
 ])('%s', (ilk, GEM, setup) => {
   let startingGemBalance, startingDaiBalance;
 
@@ -159,15 +164,6 @@ describe.each([
     await expectValues(cdp, { collateral: 0, debt: 0 });
   });
 
-  test('getEventHistory', async () => {
-    const mockFn = jest.fn(async () => dummyEventData(ilk));
-    maker.service(QUERY_API).getCdpEventsForIlkAndUrn = mockFn;
-    const cdp = await maker.service(CDP_MANAGER).open(ilk);
-    const events = await cdp.getEventHistory();
-    expect(mockFn).toBeCalled();
-    expect(events).toEqual(formattedDummyEventData(GEM, ilk));
-  });
-
   test('getOwner', async () => {
     const cdp = await maker.service(CDP_MANAGER).open(ilk);
     const proxy = await maker.service('proxy').currentProxy();
@@ -179,12 +175,12 @@ describe.each([
     await expectValues(cdp, {
       collateral: 1,
       debt: 0,
-      myGem: startingGemBalance.minus(1)
+      myGem: startingGemBalance.minus(1),
     });
     await cdp.lockCollateral(1);
     await expectValuesAfterReset(cdp, {
       collateral: 2,
-      myGem: startingGemBalance.minus(2)
+      myGem: startingGemBalance.minus(2),
     });
 
     await cdp.lockAndDraw(1, 5);
@@ -192,13 +188,13 @@ describe.each([
       collateral: 3,
       debt: 5,
       myDai: startingDaiBalance.plus(5),
-      myGem: startingGemBalance.minus(3)
+      myGem: startingGemBalance.minus(3),
     });
 
     await cdp.freeCollateral(0.8);
     await expectValuesAfterReset(cdp, {
       collateral: 2.2,
-      myGem: startingGemBalance.minus(2.2)
+      myGem: startingGemBalance.minus(2.2),
     });
   });
 
@@ -210,7 +206,7 @@ describe.each([
       collateral: 1,
       debt: 1,
       myDai: startingDaiBalance.plus(1),
-      myGem: startingGemBalance.minus(1)
+      myGem: startingGemBalance.minus(1),
     });
     cdp.type.reset();
     await cdp.type.prefetch();
@@ -218,7 +214,7 @@ describe.each([
       val: cdp.type.price.toNumber(),
       ratio: cdp.type.price.toNumber(),
       isSafe: true,
-      daiAvailable: '149'
+      daiAvailable: '149',
     });
 
     const sameCdp = await mgr.getCdp(cdp.id);
@@ -237,7 +233,7 @@ describe.each([
     expect(drawHandler.mock.calls.length).toBe(2);
     await expectValuesAfterReset(cdp, {
       debt: 2,
-      myDai: startingDaiBalance.plus(2)
+      myDai: startingDaiBalance.plus(2),
     });
 
     const wipe = cdp.wipeDai(0.5);
@@ -250,7 +246,7 @@ describe.each([
     expect(wipeHandler.mock.calls.length).toBe(2);
     await expectValuesAfterReset(cdp, {
       debt: 1.5,
-      myDai: startingDaiBalance.plus(1.5)
+      myDai: startingDaiBalance.plus(1.5),
     });
 
     await cdp.wipeAndFree(MDAI(1), GEM(0.5));
@@ -258,7 +254,7 @@ describe.each([
       collateral: 0.5,
       debt: 0.5,
       myDai: startingDaiBalance.plus(0.5),
-      myGem: startingGemBalance.minus(0.5)
+      myGem: startingGemBalance.minus(0.5),
     });
   });
 
@@ -268,7 +264,7 @@ describe.each([
     const cdp = await mgr.openLockAndDraw(ilk, GEM(1), MDAI(1));
     await expectValuesAfterReset(cdp, {
       debt: 1,
-      myDai: startingDaiBalance.plus(1)
+      myDai: startingDaiBalance.plus(1),
     });
 
     const wipeAll = cdp.wipeAll();
@@ -280,10 +276,7 @@ describe.each([
     await wipeAll;
     expect(wipeAllHandler.mock.calls.length).toBe(2);
 
-    await expectValuesAfterReset(cdp, {
-      debt: 0,
-      myDai: startingDaiBalance
-    });
+    await expectValuesAfterReset(cdp, { debt: 0, myDai: startingDaiBalance });
 
     const newAddress = '0x81431b69b1e0e334d4161a13c2955e0f3599381e';
     const give = cdp.give(newAddress);
@@ -307,7 +300,7 @@ describe.each([
       collateral: 1,
       debt: 1,
       myDai: startingDaiBalance.plus(1),
-      myGem: startingGemBalance.minus(1)
+      myGem: startingGemBalance.minus(1),
     });
 
     const wipeAllAndFree = cdp.wipeAllAndFree(GEM(1));
@@ -325,7 +318,7 @@ describe.each([
       collateral: 0,
       debt: 0,
       myDai: startingDaiBalance,
-      myGem: startingGemBalance
+      myGem: startingGemBalance,
     });
 
     const newAddress = '0x81431b69b1e0e334d4161a13c2955e0f3599381e';
@@ -372,9 +365,6 @@ describe.each([
     await unsafeWipeAll;
     expect(unsafeWipeAllHandler.mock.calls.length).toBe(2);
 
-    await expectValuesAfterReset(cdp, {
-      debt: 0,
-      myDai: startingDaiBalance
-    });
+    await expectValuesAfterReset(cdp, { debt: 0, myDai: startingDaiBalance });
   });
 });

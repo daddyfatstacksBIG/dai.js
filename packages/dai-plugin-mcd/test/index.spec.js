@@ -1,6 +1,7 @@
-import McdPlugin, { BAT } from '../src';
-import { mcdMaker } from './helpers';
 import addresses from '../contracts/addresses/testnet.json';
+import { BAT, McdPlugin } from '../src';
+
+import { mcdMaker } from './helpers';
 
 let maker;
 
@@ -11,14 +12,14 @@ beforeAll(async () => {
 test('addConfig outputs contract addresses for all networks', () => {
   let {
     smartContract: { addContracts },
-    token: { erc20 }
+    token: { erc20 },
   } = McdPlugin.addConfig();
 
   // there are more addresses for testnet than other networks
   for (const contract of Object.values(addContracts)) {
     expect(contract.address).toEqual(
       expect.objectContaining({
-        testnet: expect.any(String)
+        testnet: expect.any(String),
       })
     );
   }
@@ -27,7 +28,7 @@ test('addConfig outputs contract addresses for all networks', () => {
     expect(token.address).toEqual({
       testnet: expect.any(String),
       kovan: expect.any(String),
-      mainnet: expect.any(String)
+      mainnet: expect.any(String),
     });
   }
 });
@@ -45,7 +46,7 @@ test('contract address overrides', async () => {
 
   const maker2 = await mcdMaker({
     addressOverrides: { PIP_ETH: addr1, BAT: addr2 },
-    prefetch: false
+    prefetch: false,
   });
 
   const scs = maker2.service('smartContract');
@@ -59,4 +60,9 @@ test('BAT token basic functionality', async () => {
   const token = maker.getToken('BAT');
   expect(token.address()).toEqual(addresses.BAT);
   expect(await token.balance()).toEqual(BAT(1000));
+});
+
+test('McdPlugin has a named and a default export', async () => {
+  expect(require('../src').default).toEqual(McdPlugin);
+  expect(require('../src').McdPlugin).toEqual(McdPlugin);
 });

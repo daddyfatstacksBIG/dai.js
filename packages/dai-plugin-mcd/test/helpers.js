@@ -1,12 +1,13 @@
-import assert from 'assert';
 import { createCurrencyRatio } from '@makerdao/currency';
-import Maker from '../../dai/src';
-import McdPlugin, { ETH, USD, GNT } from '../src';
-import { ServiceRoles } from '../src/constants';
-import { stringToBytes } from '../src/utils';
-import ethAbi from 'web3-eth-abi';
+import assert from 'assert';
 import BigNumber from 'bignumber.js';
+import ethAbi from 'web3-eth-abi';
+
+import Maker from '../../dai/src';
+import { ETH, GNT, McdPlugin, USD } from '../src';
+import { ServiceRoles } from '../src/constants';
 import { RAY } from '../src/constants';
+import { stringToBytes } from '../src/utils';
 
 export async function mcdMaker({
   preset = 'test',
@@ -19,11 +20,9 @@ export async function mcdMaker({
 } = {}) {
   const maker = await Maker.create(preset, {
     plugins: [[McdPlugin, { cdpTypes, addressOverrides, network, prefetch }]],
-    web3: {
-      pollingInterval: 100
-    },
+    web3: { pollingInterval: 100 },
     log,
-    ...settings
+    ...settings,
   });
   await maker.authenticate();
   return maker;
@@ -39,7 +38,7 @@ export async function setPrice(maker, ratio, ilk) {
   await pip.poke(val);
   await scs.getContract('MCD_SPOT').poke(stringToBytes(ilk));
 
-  //check that setPrice worked
+  // check that setPrice worked
   const data = maker.service(ServiceRoles.SYSTEM_DATA);
   const { spot } = await data.vat.ilks(stringToBytes(ilk));
   const spotBN = new BigNumber(spot.toString()).dividedBy(RAY);
@@ -48,11 +47,7 @@ export async function setPrice(maker, ratio, ilk) {
   const { mat } = await data.spot.ilks(stringToBytes(ilk));
   const matBN = new BigNumber(mat.toString()).dividedBy(RAY);
   assert(
-    ratio.toNumber() ===
-      spotBN
-        .times(parBN)
-        .times(matBN)
-        .toNumber(),
+    ratio.toNumber() === spotBN.times(parBN).times(matBN).toNumber(),
     'setPrice did not work'
   );
 }

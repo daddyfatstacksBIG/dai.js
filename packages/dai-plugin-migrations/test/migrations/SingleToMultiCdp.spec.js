@@ -1,20 +1,21 @@
+import { createCurrencyRatio } from '@makerdao/currency';
+import { ETH, MDAI as DAI, USD } from '@makerdao/dai-plugin-mcd';
 import {
+  mineBlocks,
+  restoreSnapshot,
+  takeSnapshot,
+} from '@makerdao/test-helpers';
+
+import { MKR, SAI } from '../../src';
+import { Migrations, ServiceRoles } from '../../src/constants';
+import {
+  drawSaiAndMigrateToDai,
+  migrateSaiToDai,
   migrationMaker,
   placeLimitOrder,
   setPrice,
-  drawSaiAndMigrateToDai,
-  migrateSaiToDai
 } from '../helpers';
 import { mockCdpIds } from '../helpers/mocks';
-import { ServiceRoles, Migrations } from '../../src/constants';
-import {
-  mineBlocks,
-  takeSnapshot,
-  restoreSnapshot
-} from '@makerdao/test-helpers';
-import { USD, MDAI as DAI, ETH } from '@makerdao/dai-plugin-mcd';
-import { SAI, MKR } from '../../src';
-import { createCurrencyRatio } from '@makerdao/currency';
 
 let maker, migration, snapshotData;
 
@@ -53,7 +54,7 @@ describe('SCD to MCD CDP Migration', () => {
       await mockCdpIds(maker, { forProxy: [{ id: '123' }] });
       expect(await migration.check()).toMatchObject({
         [await maker.currentProxy()]: [{ id: '123' }],
-        [maker.currentAddress()]: []
+        [maker.currentAddress()]: [],
       });
     });
 
@@ -61,18 +62,18 @@ describe('SCD to MCD CDP Migration', () => {
       await mockCdpIds(maker, { forAccount: [{ id: '123' }] });
       expect(await migration.check()).toMatchObject({
         [await maker.currentProxy()]: [],
-        [maker.currentAddress()]: [{ id: '123' }]
+        [maker.currentAddress()]: [{ id: '123' }],
       });
     });
 
     test('if there are both cdps owned by the account and proxy, return true', async () => {
       await mockCdpIds(maker, {
         forAccount: [{ id: '123' }],
-        forProxy: [{ id: '234' }]
+        forProxy: [{ id: '234' }],
       });
       expect(await migration.check()).toMatchObject({
         [await maker.currentProxy()]: [{ id: '234' }],
-        [maker.currentAddress()]: [{ id: '123' }]
+        [maker.currentAddress()]: [{ id: '123' }],
       });
     });
 
@@ -107,7 +108,7 @@ describe('SCD to MCD CDP Migration', () => {
     });
   });
 
-  describe.each(['MKR', 'DEBT', 'GEM'])('pay with %s', payment => {
+  describe.each(['MKR', 'DEBT', 'GEM'])('pay with %s', (payment) => {
     let cdp, proxyAddress;
 
     beforeEach(async () => {
@@ -137,10 +138,7 @@ describe('SCD to MCD CDP Migration', () => {
       const scdCollateral = await cdp.getCollateralValue();
       const scdDebt = await cdp.getDebtValue();
       await mineBlocks(maker.service('web3'), 3);
-      await maker
-        .service('smartContract')
-        .getContract('MCD_POT')
-        .drip();
+      await maker.service('smartContract').getContract('MCD_POT').drip();
 
       const mcdCdpsBeforeMigration = await manager.getCdpIds(proxyAddress);
 
@@ -156,6 +154,7 @@ describe('SCD to MCD CDP Migration', () => {
       const mcdCdpId = mcdCdpsAfterMigration[0].id;
       expect(newId).toEqual(mcdCdpId);
 
+      maker.service('mcd:cdpType').reset();
       const mcdCdp = await manager.getCdp(mcdCdpId);
       const mcdCollateral = mcdCdp.collateralAmount.toNumber();
       const mcdDebt = mcdCdp.debtValue.toNumber();

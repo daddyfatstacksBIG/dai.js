@@ -1,12 +1,12 @@
+import { restoreSnapshot, takeSnapshot } from '@makerdao/test-helpers';
+import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
 import findIndex from 'lodash/findIndex';
-import { mcdMaker, setupCollateral } from './helpers';
+
+import { BAT, DGD, ETH, GNT, MDAI } from '../src';
 import { setMethod, transferToBag } from '../src/CdpManager';
 import { ServiceRoles } from '../src/constants';
-import { ETH, MDAI, GNT, DGD, BAT } from '../src';
-import { dummyEventData, formattedDummyEventData } from './fixtures';
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
 
-import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
+import { mcdMaker, setupCollateral } from './helpers';
 
 let maker, cdpMgr, txMgr, snapshotData;
 
@@ -16,12 +16,16 @@ beforeAll(async () => {
       { currency: ETH, ilk: 'ETH-A' },
       { currency: DGD, ilk: 'DGD-A', decimals: 9 },
       { currency: GNT, ilk: 'GNT-A' },
-      { currency: BAT, ilk: 'BAT-A' }
-    ]
+      { currency: BAT, ilk: 'BAT-A' },
+    ],
   });
   cdpMgr = maker.service(ServiceRoles.CDP_MANAGER);
   txMgr = maker.service('transactionManager');
   snapshotData = await takeSnapshot(maker);
+});
+
+afterEach(() => {
+  cdpMgr.reset();
 });
 
 afterAll(async () => {
@@ -38,7 +42,6 @@ test('getCdpIds gets empty CDP data from a proxy', async () => {
 test('getCdpIds gets all CDP data from the proxy', async () => {
   const cdp1 = await cdpMgr.open('ETH-A');
   const cdp2 = await cdpMgr.open('BAT-A');
-  cdpMgr.reset();
   const currentProxy = await maker.currentProxy();
   const cdps = await cdpMgr.getCdpIds(currentProxy);
 
@@ -51,7 +54,7 @@ test('getCombinedDebtValue', async () => {
   await setupCollateral(maker, 'ETH-A', { price: 150, debtCeiling: 50 });
   await cdpMgr.openLockAndDraw('ETH-A', ETH(1), MDAI(3));
   await cdpMgr.openLockAndDraw('ETH-A', ETH(2), MDAI(5));
-  cdpMgr.reset();
+  maker.service(ServiceRoles.CDP_TYPE).reset();
   const currentProxy = await maker.currentProxy();
   const totalDebt = await cdpMgr.getCombinedDebtValue(currentProxy);
   expect(totalDebt.toNumber()).toBeCloseTo(8, 1);
@@ -77,23 +80,9 @@ test('getCdp can disable prefetch', async () => {
   const cdp = await cdpMgr.open('ETH-A');
   const sameCdp = await cdpMgr.getCdp(cdp.id, {
     prefetch: false,
-    cache: false
+    cache: false,
   });
   expect(sameCdp._urnInfoPromise).toBeUndefined();
-});
-
-test('getCombinedEventHistory', async () => {
-  const proxy = await maker.currentProxy();
-  const mockFn = jest.fn(async () => dummyEventData('ETH-A'));
-  maker.service(
-    ServiceRoles.QUERY_API
-  ).getCdpEventsForArrayOfIlksAndUrns = mockFn;
-  const events = await cdpMgr.getCombinedEventHistory(proxy);
-  expect(mockFn).toBeCalled();
-  const GEM = maker
-    .service(ServiceRoles.CDP_TYPE)
-    .getCdpType(null, events[0].ilk).currency;
-  expect(events).toEqual(formattedDummyEventData(GEM, events[0].ilk));
 });
 
 test('transaction tracking for openLockAndDraw', async () => {
@@ -106,9 +95,9 @@ test('transaction tracking for openLockAndDraw', async () => {
       expect(contract).toBe('PROXY_ACTIONS');
       expect(method).toBe('openLockETHAndDraw');
     }),
-    mined: jest.fn(tx => {
+    mined: jest.fn((tx) => {
       expect(tx.hash).toBeTruthy();
-    })
+    }),
   };
   txMgr.listen(open, handlers);
   await open;
@@ -243,7 +232,7 @@ test('get event history via web3', async () => {
   const cachedEvents = await cdpMgr.getEventHistory(cdp);
   const openCachedEventIdx = findIndex(cachedEvents, {
     type: 'OPEN',
-    id: cdp.id
+    id: cdp.id,
   });
   expect(openCachedEventIdx).toBeGreaterThan(-1);
 });

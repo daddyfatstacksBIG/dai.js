@@ -1,9 +1,12 @@
 import { PublicService } from '@makerdao/services-core';
-import { PAUSE } from './utils/constants';
-import DsSpellAbi from '../contracts/abis/DSSpell.json';
-import padStart from 'lodash/padStart';
 import assert from 'assert';
+import padStart from 'lodash/padStart';
+
+import DsSpellAbi from '../contracts/abis/DSSpell.json';
 import contractInfo from '../contracts/contract-info.json';
+
+import { PAUSE } from './utils/constants';
+
 const pauseInfo = contractInfo.pause;
 import { netIdToName } from './utils/helpers';
 
@@ -14,6 +17,7 @@ export default class SpellService extends PublicService {
     this.done = {};
     this.action = {};
     this.executionDate = {};
+    this.scheduledDate = {};
   }
 
   getDelayInSeconds() {
@@ -35,10 +39,25 @@ export default class SpellService extends PublicService {
   }
 
   async getScheduledDate(spellAddress) {
-    const delay = await this.getDelayInSeconds();
+    if (this.scheduledDate[spellAddress])
+      return this.scheduledDate[spellAddress];
     const eta = await this.getEta(spellAddress);
-    assert(eta, `spell ${spellAddress} has not been scheduled yet`);
-    return new Date(eta.getTime() - delay * 1000);
+    assert(eta, `spell ${spellAddress} has not been scheduled`);
+    const pauseAddress = this._pauseContract().address;
+    const web3Service = this.get('web3');
+    const netId = web3Service.network;
+    const networkName = netIdToName(netId);
+    const paddedSpellAddress =
+      '0x' + padStart(spellAddress.replace(/^0x/, ''), 64, '0');
+    const [plotEvent] = await web3Service.getPastLogs({
+      fromBlock: pauseInfo.inception_block[networkName],
+      toBlock: 'latest',
+      address: pauseAddress,
+      topics: [pauseInfo.events.plot, paddedSpellAddress],
+    });
+    const { timestamp } = await web3Service.getBlock(plotEvent.blockNumber);
+    this.scheduledDate[spellAddress] = new Date(timestamp * 1000);
+    return this.scheduledDate[spellAddress];
   }
 
   async getDone(spellAddress) {
@@ -76,7 +95,7 @@ export default class SpellService extends PublicService {
       fromBlock: pauseInfo.inception_block[networkName],
       toBlock: 'latest',
       address: pauseAddress,
-      topics: [pauseInfo.events.exec, paddedSpellAddress]
+      topics: [pauseInfo.events.exec, paddedSpellAddress],
     });
     const { timestamp } = await web3Service.getBlock(execEvent.blockNumber);
     this.executionDate[spellAddress] = new Date(timestamp * 1000);
@@ -88,6 +107,7 @@ export default class SpellService extends PublicService {
     this.eta = {};
     this.done = {};
     this.executionDate = {};
+    this.scheduledDate = {};
   }
 
   _pauseContract() {

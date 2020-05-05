@@ -1,12 +1,12 @@
-import { mcdMaker } from '../helpers';
 import {
-  takeSnapshot,
   restoreSnapshot,
-  TestAccountProvider
+  takeSnapshot,
+  TestAccountProvider,
 } from '@makerdao/test-helpers';
-import { isValidAddressString } from '../../src/utils';
 
 import schemas, { PROXY_ADDRESS } from '../../src/schemas';
+import { isValidAddressString } from '../../src/utils';
+import { mcdMaker } from '../helpers';
 
 let maker, snapshotData, address, address2, proxyAddress, proxyAddress2;
 
@@ -40,16 +40,15 @@ test(PROXY_ADDRESS, async () => {
   expect(proxy2).toEqual(proxyAddress2);
 });
 
-test.skip(`${PROXY_ADDRESS} using invalid account address`, async () => {
-  expect(() => {
-    maker.latest(PROXY_ADDRESS, '0xfoobar');
-  }).toThrow(/invalid/i);
+test(`${PROXY_ADDRESS} using invalid account address`, async () => {
+  const promise = maker.latest(PROXY_ADDRESS, '0xfoobar');
+  await expect(promise).rejects.toThrow(/invalid/i);
 });
 
-test.skip(`${PROXY_ADDRESS} using account with no proxy`, async () => {
-  const promise = maker.latest(
+test(`${PROXY_ADDRESS} using account with no proxy`, async () => {
+  const proxy = await maker.latest(
     PROXY_ADDRESS,
     '0x1111111111111111111111111111111111111111'
   );
-  await expect(promise).rejects.toThrow(/no proxy found/i);
+  expect(proxy).toBeNull();
 });

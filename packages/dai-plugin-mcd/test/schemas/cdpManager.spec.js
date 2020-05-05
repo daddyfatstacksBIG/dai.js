@@ -1,18 +1,17 @@
-import { mcdMaker, setupCollateral } from '../helpers';
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
-import { ETH, BAT, MDAI } from '../../src';
-import { ServiceRoles } from '../../src/constants';
+import { restoreSnapshot, takeSnapshot } from '@makerdao/test-helpers';
 import BigNumber from 'bignumber.js';
 
+import { BAT, ETH, MDAI } from '../../src';
+import { ServiceRoles } from '../../src/constants';
 import {
+  TOTAL_OWNED_VAULTS,
   VAULT_ADDRESS,
+  VAULT_OWNER,
   VAULT_TYPE,
   VAULTS_CREATED,
-  VAULT_OWNER,
-  TOTAL_OWNED_VAULTS
 } from '../../src/schemas';
-
 import cdpManagerSchemas from '../../src/schemas/cdpManager';
+import { mcdMaker, setupCollateral } from '../helpers';
 
 let maker, snapshotData, cdpMgr, proxyAddress, expectedVaultAddress;
 
@@ -24,18 +23,16 @@ beforeAll(async () => {
   maker = await mcdMaker({
     cdpTypes: [
       { currency: ETH, ilk: 'ETH-A' },
-      { currency: BAT, ilk: 'BAT-A' }
+      { currency: BAT, ilk: 'BAT-A' },
     ],
-    multicall: true
+    multicall: true,
   });
 
   snapshotData = await takeSnapshot(maker);
   maker.service('multicall').createWatcher();
   maker.service('multicall').registerSchemas(cdpManagerSchemas);
   maker.service('multicall').start();
-  await setupCollateral(maker, 'ETH-A', {
-    price: ETH_A_PRICE
-  });
+  await setupCollateral(maker, 'ETH-A', { price: ETH_A_PRICE });
 
   cdpMgr = await maker.service(ServiceRoles.CDP_MANAGER);
   const dai = maker.getToken(MDAI);
@@ -73,9 +70,8 @@ test(VAULT_TYPE, async () => {
   await expect(vaultType2).rejects.toThrow(/does not exist/i);
 
   const cdpId3 = -9000;
-  expect(() => {
-    maker.latest(VAULT_TYPE, cdpId3);
-  }).toThrow(/invalid vault id/i);
+  const vaultType3 = maker.latest(VAULT_TYPE, cdpId3);
+  await expect(vaultType3).rejects.toThrow(/invalid vault id/i);
 });
 
 test(VAULTS_CREATED, async () => {

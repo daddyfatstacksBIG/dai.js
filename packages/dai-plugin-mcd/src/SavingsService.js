@@ -1,10 +1,11 @@
 import { PublicService } from '@makerdao/services-core';
-import { ServiceRoles } from './constants';
-import { MDAI } from './index';
 import BigNumber from 'bignumber.js';
-import { RAY, WAD, SECONDS_PER_YEAR } from './constants';
-import tracksTransactions from './utils/tracksTransactions';
+
+import { ServiceRoles } from './constants';
+import { RAY, SECONDS_PER_YEAR, WAD } from './constants';
 import { getDsrEventHistory } from './EventHistory';
+import { MDAI } from './index';
+import tracksTransactions from './utils/tracksTransactions';
 
 export default class SavingsService extends PublicService {
   constructor(name = ServiceRoles.SAVINGS) {
@@ -13,7 +14,7 @@ export default class SavingsService extends PublicService {
       'proxy',
       'accounts',
       'web3',
-      ServiceRoles.SYSTEM_DATA
+      ServiceRoles.SYSTEM_DATA,
     ]);
   }
 
@@ -61,23 +62,13 @@ export default class SavingsService extends PublicService {
   async balanceOf(guy) {
     const slice = new BigNumber(await this._pot.pie(guy));
     const chi = await this.chi();
-    return MDAI(
-      slice
-        .times(chi)
-        .div(WAD)
-        .dp(18)
-    );
+    return MDAI(slice.times(chi).div(WAD).dp(18));
   }
 
   async getTotalDai() {
     const totalPie = new BigNumber(await this._pot.Pie());
     const chi = await this.chi();
-    return MDAI(
-      totalPie
-        .times(chi)
-        .div(WAD)
-        .dp(18)
-    );
+    return MDAI(totalPie.times(chi).div(WAD).dp(18));
   }
 
   async getYearlyRate() {
@@ -118,7 +109,7 @@ export default class SavingsService extends PublicService {
       if (type === 'DSR_DEPOSIT') sum = sum.plus(amount);
       if (type === 'DSR_WITHDRAW') sum = sum.minus(amount);
     });
-    const balance = await this.balance();
+    const balance = await this.balanceOf(address);
     return balance.gt(sum) ? balance.minus(sum) : MDAI(0);
   }
 

@@ -1,13 +1,35 @@
-import { PublicService } from '@makerdao/services-core';
 import { createWatcher } from '@makerdao/multicall';
+import { PublicService } from '@makerdao/services-core';
 import debug from 'debug';
-import { Observable, ReplaySubject, combineLatest, from } from 'rxjs';
-import { map, flatMap, debounceTime, take } from 'rxjs/operators';
+import find from 'lodash/find';
 import get from 'lodash/get';
 import set from 'lodash/set';
+import { combineLatest, from, Observable, ReplaySubject, throwError, timer } from 'rxjs';
+import {
+  catchError,
+  debounceTime,
+  filter,
+  flatMap,
+  map,
+  take,
+  takeUntil,
+  tap,
+  throwIfEmpty,
+} from 'rxjs/operators';
 
 const log = debug('dai:MulticallService');
 const log2 = debug('dai:MulticallService:observables');
+
+const throwIfErrorInValues = values => values.map(v => {
+  if (v instanceof Error)
+    throw v;
+}); // prettier-ignore
+const checkForErrors = (values) => find(values, (v) => v instanceof Error) === undefined;
+const catchNestedErrors = (key) => (f) =>
+  catchError((err) => {
+    log2(`Caught nested error in ${key}: ${err}`);
+    return from([new Error(err)]);
+  })(f);
 
 export default class MulticallService extends PublicService {
   constructor(name = 'multicall') {
@@ -32,6 +54,7 @@ export default class MulticallService extends PublicService {
     this._removeSchemaDelay = settings.removeSchemaDelay || 1000;
     this._debounceTime = settings.debounceTime || 1;
     this._latestDebounceTime = settings.latestDebounceTime || 1;
+    this._latestTimeout = settings.latestTimeout || 10000;
   }
 
   authenticate() {
@@ -42,7 +65,7 @@ export default class MulticallService extends PublicService {
     const web3 = this.get('web3');
     config = {
       multicallAddress: this.get('smartContract').getContractAddress('MULTICALL'),
-      ...config
+      ...config,
     };
 
     const onNewBlockPolling = interval === 'block';
@@ -57,8 +80,9 @@ export default class MulticallService extends PublicService {
     this._watcher = createWatcher([], { ...config, interval, rpcUrl });
 
     if (onNewBlockPolling) {
-      log(`Watcher created with poll on new block mode using ${rpcUrl ? `rpcUrl: ${rpcUrl}` : 'web3 provider'}`); // prettier-ignore
-      web3.onNewBlock(blockNumber => {
+      log(`Watcher created with poll on new block mode using ${
+          rpcUrl ? `rpcUrl: ${rpcUrl}` : 'web3 provider'}`); // prettier-ignore
+      web3.onNewBlock((blockNumber) => {
         log(`Polling after new block detected (${blockNumber})`);
         this._watcher.poll();
       });
@@ -73,8 +97,8 @@ export default class MulticallService extends PublicService {
     this._watcher.onPoll(({ id, latestBlockNumber: block }) =>
       log(`Sending network request #${id}${block ? ` (latest block: ${block})` : ''}`)
     );
-    this._watcher.onNewBlock(block => log(`Latest block: ${block}`));
-    this._watcher.onError(err => console.error('Multicall error:', err));
+    this._watcher.onNewBlock((block) => log(`Latest block: ${block}`));
+    this._watcher.onError((err) => console.error('Multicall error:', err));
 
     return this._watcher;
   }
@@ -135,22 +159,28 @@ export default class MulticallService extends PublicService {
   registerSchemas(schemas) {
     if (typeof schemas !== 'object') throw new Error('Schemas must be object or array');
 
-    // If schemas is key/val object use key as schema key and convert to array object
-    if (!Array.isArray(schemas)) schemas = Object.keys(schemas).map(key => ({ key, ...schemas[key] })); // prettier-ignore
+    // If schemas is key/val object use key as schema key and convert to array
+    // object
+    if (!Array.isArray(schemas))
+      schemas = Object.keys(schemas).map(
+          key => ({key, ...schemas[key]})); // prettier-ignore
     // Clone if array
-    else schemas = schemas.map(item => ({ ...item }));
+    else
+      schemas = schemas.map(item => ({...item}));
 
-    schemas.forEach(schema => {
+    schemas.forEach((schema) => {
       if (!schema.key) throw new Error('Schema definitions must have a unique key');
       // Automatically use schema key as return key if no return keys specified
       if (!schema.return && !schema.returns) schema.returns = [schema.key];
-      if (schema.return && schema.returns) throw new Error('Ambiguous return definitions in schema: found both return and returns property'); // prettier-ignore
+      if (schema.return && schema.returns)
+        throw new Error(
+            'Ambiguous return definitions in schema: found both return and returns property'); // prettier-ignore
       if (schema.return) schema.returns = [schema.return];
       if (!Array.isArray(schema.returns))
         throw new Error('Schema must contain return/returns property');
       // Use return keys to create observable key => schema mapping
       // and normalize as array of [key, transform] arrays
-      schema.returns = schema.returns.map(ret => {
+      schema.returns = schema.returns.map((ret) => {
         if (!Array.isArray(ret)) ret = [ret];
         if (this._schemaByObservableKey[ret[0]] !== undefined)
           throw new Error(`Observable with key ${ret[0]} already registered`);
@@ -164,8 +194,14 @@ export default class MulticallService extends PublicService {
   }
 
   latest(key, ...args) {
-    return this.watch(key, ...args)
+    const obsPath = `${key}${args.length > 0 ? '.' : ''}${args.join('.')}`;
+    return this._watch({ depth: 0, throwIfError: true }, key, ...args)
       .pipe(
+        catchError((err) => {
+          throw new Error(err);
+        }),
+        takeUntil(timer(this._latestTimeout)),
+        throwIfEmpty(() => new Error(`Timed out waiting for latest value of: ${obsPath}`)),
         debounceTime(this._latestDebounceTime),
         take(1)
       )
@@ -176,33 +212,46 @@ export default class MulticallService extends PublicService {
     return this._watch({ depth: 0 }, key, ...args);
   }
 
-  _watch({ depth }, key, ...args) {
+  _watch({ depth, throwIfError = false }, key, ...args) {
     // Find schema definition associated with this observable key
     const schemaDefinition = this.schemaByObservableKey(key);
     const expectedArgs = schemaDefinition.generate.length;
     if (args.length < expectedArgs)
-      throw new Error(`Observable ${key} expects at least ${expectedArgs} argument(s)`);
+      return throwError(`Observable ${key} expects at least ${expectedArgs} argument(s)`);
+
+    const obsPath = `${key}${args.length > 0 ? '.' : ''}${args.join('.')}`;
 
     // Validate arguments using schema args validator
     if (schemaDefinition?.validate?.args) {
       const validate = schemaDefinition.validate.args(...args);
-      if (validate) throw new Error(validate);
+      if (validate) {
+        log2(`Input validation failed for observable: ${obsPath} (depth: ${depth})`);
+        return throwError(validate);
+      }
     }
 
-    // Create or get existing schema instance for this instance path (schema definition + args)
+    // Create or get existing schema instance for this instance path (schema
+    // definition + args)
     const schemaInstance = this._createSchemaInstance(schemaDefinition, ...args);
-    const obsPath = `${key}${args.length > 0 ? '.' : ''}${args.join('.')}`;
     const { computed } = schemaInstance;
-    log2(`watch() called for ${computed ? 'computed ' : 'base '}observable: ${obsPath} (depth: ${depth})`); // prettier-ignore
+    log2(`watch() called for ${computed ? 'computed ' : 'base '}observable: ${
+        obsPath} (depth: ${depth})`); // prettier-ignore
 
-    // Return existing observable if one already exists for this observable path (key + args)
+    // Return existing observable if one already exists for this observable path
+    // (key + args)
     let existing = get(this._observables, obsPath);
     if (existing) {
       if (computed) {
         log2(`Returning existing computed observable: ${obsPath} (depth: ${depth})`);
         // Only debounce if call to watch() is not nested
         if (depth === 0) existing = existing.pipe(debounceTime(this._debounceTime));
-        return existing.pipe(map(result => computed(...result)));
+        if (throwIfError) existing = existing.pipe(tap(throwIfErrorInValues));
+        return existing.pipe(
+          // Don't pass values to computed() if any of them are errors
+          filter(checkForErrors),
+          // Pass values to computed() on the computed observable
+          map((result) => computed(...result))
+        );
       }
       log2(`Returning existing base observable: ${obsPath}`);
       return existing;
@@ -213,13 +262,10 @@ export default class MulticallService extends PublicService {
       // Handle dynamically generated dependencies
       const dependencies =
         typeof schemaInstance.dependencies === 'function'
-          ? schemaInstance.dependencies({
-              watch: this.watch.bind(this),
-              get: this.get.bind(this)
-            })
+          ? schemaInstance.dependencies({ watch: this.watch.bind(this), get: this.get.bind(this) })
           : schemaInstance.dependencies;
 
-      const recurseDependencyTree = trie_ => {
+      const recurseDependencyTree = (trie_) => {
         const key = trie_[0];
         const trie = trie_.slice(1);
 
@@ -229,8 +275,8 @@ export default class MulticallService extends PublicService {
         if (key instanceof Promise || Array.isArray(key)) return from(key);
         if (typeof key === 'function') return from(key());
 
-        const indexesAtLeafNodes = trie.map(node => !Array.isArray(node));
-        const allLeafNodes = indexesAtLeafNodes.every(node => node === true);
+        const indexesAtLeafNodes = trie.map((node) => !Array.isArray(node));
+        const allLeafNodes = indexesAtLeafNodes.every((node) => node === true);
 
         if (Array.isArray(trie) && trie.length === 0) {
           // When trie is an empty array, indicates that we only need to return
@@ -251,7 +297,11 @@ export default class MulticallService extends PublicService {
             trie.map((node, idx) => {
               return indexesAtLeafNodes[idx] ? [node] : recurseDependencyTree(node);
             })
-          ).pipe(flatMap(result => this._watch({ depth: depth + 1 }, key, ...result)));
+          ).pipe(
+            flatMap((result) =>
+              this._watch({ depth: depth + 1 }, key, ...result).pipe(catchNestedErrors(key))
+            )
+          );
         }
       };
 
@@ -262,7 +312,13 @@ export default class MulticallService extends PublicService {
       set(this._observables, obsPath, observable);
       // Only debounce if call to watch() is not nested
       if (depth === 0) observable = observable.pipe(debounceTime(this._debounceTime));
-      return observable.pipe(map(result => computed(...result)));
+      if (throwIfError) observable = observable.pipe(tap(throwIfErrorInValues));
+      return observable.pipe(
+        // Don't pass values to computed() if any of them are errors
+        filter(checkForErrors),
+        // Pass values to computed() on the computed observable
+        map((result) => computed(...result))
+      );
     }
 
     // This is a base observable
@@ -275,7 +331,7 @@ export default class MulticallService extends PublicService {
       this._handleResult(subject, obsPath, this._multicallResultCache[obsPath]);
 
     // Create base observable
-    const observable = Observable.create(observer => {
+    const observable = Observable.create((observer) => {
       this._totalSchemaSubscribers++;
       log2(`Observer subscribed to ${id} (${this._schemaSubscribers[path] + 1} subscribers)`);
       // If first subscriber to this schema add it to multicall
@@ -292,7 +348,8 @@ export default class MulticallService extends PublicService {
           this._removeSchemaFromMulticall(schemaInstance.id);
         // Unsubscribe this observer from the subject for this base observable
         sub.unsubscribe();
-        log2(`Observer unsubscribed from ${id} (${this._schemaSubscribers[path]} subscribers)`); // prettier-ignore
+        log2(`Observer unsubscribed from ${id} (${
+            this._schemaSubscribers[path]} subscribers)`); // prettier-ignore
       };
     });
 
@@ -305,7 +362,8 @@ export default class MulticallService extends PublicService {
     const path = args.join('.');
     const instancePath = `${schemaDefinition.key}${path ? '.' : ''}${path}`;
 
-    // Return existing schema if found for this instance path (schema key + args)
+    // Return existing schema if found for this instance path (schema key +
+    // args)
     if (this._schemaInstances[instancePath]) return this._schemaInstances[instancePath];
 
     // Generate schema instance
@@ -317,9 +375,10 @@ export default class MulticallService extends PublicService {
     if (!schemaInstance.computed) {
       const { returns, transforms = {} } = schemaInstance;
       schemaInstance.path = instancePath;
-      // Auto generate return keys for schema instance if not provided by generate()
+      // Auto generate return keys for schema instance if not provided by
+      // generate()
       if (!returns) {
-        schemaInstance.returns = schemaDefinition.returns.map(ret => {
+        schemaInstance.returns = schemaDefinition.returns.map((ret) => {
           const key = ret[0];
           const fullPath = `${key}${path ? '.' : ''}${path}`;
           return transforms[key]
@@ -332,7 +391,9 @@ export default class MulticallService extends PublicService {
       // Resolve target contract address if contract string is provided
       const { target, contract } = schemaInstance;
       if (!target && !contract) throw new Error('Schema must specify target address or contract');
-      if (!target && !this._addresses[contract]) throw new Error(`Can't find contract address for ${contract}`); // prettier-ignore
+      if (!target && !this._addresses[contract])
+        throw new Error(
+            `Can't find contract address for ${contract}`); // prettier-ignore
       schemaInstance.target = target || this._addresses[contract];
     }
 
@@ -349,24 +410,20 @@ export default class MulticallService extends PublicService {
       return;
     }
     this._totalActiveSchemas++;
-    this._watcher.tap(calls => [
-      ...calls,
-      {
-        id,
-        target,
-        call,
-        returns
-      }
-    ]);
+    this._watcher.tap((calls) => [...calls, { id, target, call, returns }]);
     log2(`Schema added to multicall: ${id}`);
-    if (process?.browser) log2('Active schemas (' + this._totalActiveSchemas + ' total):', this.activeSchemaIds);
-    else log2(`Active schemas (${this._totalActiveSchemas} total): ${this.activeSchemaIds.join(',')}`); // prettier-ignore
+    if (process?.browser)
+      log2('Active schemas (' + this._totalActiveSchemas + ' total):',
+           this.activeSchemaIds);
+    else
+      log2(`Active schemas (${this._totalActiveSchemas} total): ${
+          this.activeSchemaIds.join(',')}`); // prettier-ignore
   }
 
   _removeSchemaImmediately(id) {
     if (this._removeSchemaTimers[id] !== undefined) delete this._removeSchemaTimers[id];
     log2(`Schema removed from multicall: ${id}`);
-    this._watcher.tap(schemas => schemas.filter(({ id: id_ }) => id_ !== id));
+    this._watcher.tap((schemas) => schemas.filter(({ id: id_ }) => id_ !== id));
     // If there are no active schemas unsubscribe from watcher updates
     if (--this._totalActiveSchemas === 0) {
       log2('No remaining active schemas');
@@ -374,8 +431,12 @@ export default class MulticallService extends PublicService {
       this._watcherUpdates.unsub();
       this._watcherUpdates = null;
     } else {
-      if (process?.browser) log2('Active schemas (' + this._totalActiveSchemas + ' total):', this.activeSchemaIds);
-      else log2(`Active schemas (${this._totalActiveSchemas} remaining): ${this.activeSchemaIds.join(',')}`); // prettier-ignore
+      if (process?.browser)
+        log2('Active schemas (' + this._totalActiveSchemas + ' total):',
+             this.activeSchemaIds);
+      else
+        log2(`Active schemas (${this._totalActiveSchemas} remaining): ${
+            this.activeSchemaIds.join(',')}`); // prettier-ignore
     }
   }
 
@@ -412,8 +473,8 @@ export default class MulticallService extends PublicService {
     // Pass validation if no validator found for this schema definition
     if (!schemaDefinition.validate?.hasOwnProperty(observableKey)) return;
     try {
-      // Call validation func on schema definition for result value and pass schema instance args
-      // as 2nd param and also this context
+      // Call validation func on schema definition for result value and pass
+      // schema instance args as 2nd param and also this context
       const validate = schemaDefinition.validate[observableKey].call(
         { args: schemaInstance.args },
         value,
@@ -429,7 +490,7 @@ export default class MulticallService extends PublicService {
 
   _subscribeToWatcherUpdates() {
     log2('Subscribed to watcher updates');
-    this._watcherUpdates = this._watcher.subscribe(update => {
+    this._watcherUpdates = this._watcher.subscribe((update) => {
       const subject = get(this._subjects, update.type);
       if (subject) {
         const logValue = update.value?._isBigNumber

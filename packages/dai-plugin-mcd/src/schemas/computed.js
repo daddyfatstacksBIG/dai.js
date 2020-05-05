@@ -1,67 +1,69 @@
 import { createCurrency, createCurrencyRatio } from '@makerdao/currency';
+import BigNumber from 'bignumber.js';
+
+import { ALLOWANCE_AMOUNT, defaultCdpTypes, DSR_DAI, MDAI, USD } from '../';
 import {
+  collateralizationRatio as calcCollateralizationRatio,
   collateralValue as calcCollateralValue,
   daiAvailable as calcDaiAvailable,
-  collateralizationRatio as calcCollateralizationRatio,
   liquidationPrice as calcLiquidationPrice,
-  minSafeCollateralAmount as calcMinSafeCollateralAmount
+  minSafeCollateralAmount as calcMinSafeCollateralAmount,
 } from '../math';
-import { USD, MDAI, DSR_DAI, defaultCdpTypes, ALLOWANCE_AMOUNT } from '../';
-import BigNumber from 'bignumber.js';
+
 import {
-  RATIO_DAI_USD,
-  LIQUIDATION_RATIO,
-  PRICE_WITH_SAFETY_MARGIN,
-  COLLATERAL_TYPE_PRICE,
-  VAULT_TYPE,
-  VAULT_ADDRESS,
-  VAULT_OWNER,
-  VAULT_EXTERNAL_OWNER,
-  ENCUMBERED_COLLATERAL,
-  ENCUMBERED_DEBT,
-  SAVINGS_DAI,
-  TOTAL_SAVINGS_DAI,
-  PROXY_ADDRESS,
-  DEBT_SCALING_FACTOR,
-  DEBT_VALUE,
-  COLLATERALIZATION_RATIO,
+  ADAPTER_BALANCE,
+  ANNUAL_DAI_SAVINGS_RATE,
+  ANNUAL_STABILITY_FEE,
   COLLATERAL_AMOUNT,
-  COLLATERAL_VALUE,
-  LIQUIDATION_PRICE,
-  DAI_AVAILABLE,
-  MIN_SAFE_COLLATERAL_AMOUNT,
   COLLATERAL_AVAILABLE_AMOUNT,
   COLLATERAL_AVAILABLE_VALUE,
-  UNLOCKED_COLLATERAL,
-  SAVINGS_RATE_ACCUMULATOR,
-  DAI_LOCKED_IN_DSR,
-  TOKEN_BALANCE,
-  LIQUIDATION_PENALTY,
-  ANNUAL_STABILITY_FEE,
-  TOKEN_ALLOWANCE,
-  DEBT_FLOOR,
-  PROXY_OWNER,
-  ANNUAL_DAI_SAVINGS_RATE,
-  DAI_SAVINGS_RATE,
-  DATE_EARNINGS_LAST_ACCRUED,
-  USER_VAULT_IDS,
-  USER_VAULT_ADDRESSES,
-  USER_VAULT_TYPES,
-  VAULT,
-  TOTAL_ENCUMBERED_DEBT,
-  ADAPTER_BALANCE,
   COLLATERAL_DEBT,
   COLLATERAL_TYPE_COLLATERALIZATION,
-  COLLATERAL_TYPE_DATA
+  COLLATERAL_TYPE_DATA,
+  COLLATERAL_TYPE_PRICE,
+  COLLATERAL_VALUE,
+  COLLATERALIZATION_RATIO,
+  DAI_AVAILABLE,
+  DAI_LOCKED_IN_DSR,
+  DAI_SAVINGS_RATE,
+  DATE_EARNINGS_LAST_ACCRUED,
+  DEBT_FLOOR,
+  DEBT_SCALING_FACTOR,
+  DEBT_VALUE,
+  ENCUMBERED_COLLATERAL,
+  ENCUMBERED_DEBT,
+  LIQUIDATION_PENALTY,
+  LIQUIDATION_PRICE,
+  LIQUIDATION_RATIO,
+  MIN_SAFE_COLLATERAL_AMOUNT,
+  PRICE_WITH_SAFETY_MARGIN,
+  PROXY_ADDRESS,
+  PROXY_OWNER,
+  RATIO_DAI_USD,
+  SAVINGS_DAI,
+  SAVINGS_RATE_ACCUMULATOR,
+  TOKEN_ALLOWANCE,
+  TOKEN_BALANCE,
+  TOTAL_ENCUMBERED_DEBT,
+  TOTAL_SAVINGS_DAI,
+  UNLOCKED_COLLATERAL,
+  USER_VAULT_ADDRESSES,
+  USER_VAULT_IDS,
+  USER_VAULT_TYPES,
+  VAULT,
+  VAULT_ADDRESS,
+  VAULT_EXTERNAL_OWNER,
+  VAULT_OWNER,
+  VAULT_TYPE,
 } from './_constants';
-import { validateAddress } from './_validators';
+import { validateAddress, validateVaultId } from './_validators';
 
 export const collateralTypePrice = {
-  generate: collateralTypeName => ({
+  generate: (collateralTypeName) => ({
     dependencies: [
       [RATIO_DAI_USD],
       [PRICE_WITH_SAFETY_MARGIN, collateralTypeName],
-      [LIQUIDATION_RATIO, collateralTypeName]
+      [LIQUIDATION_RATIO, collateralTypeName],
     ],
     computed: (ratioDaiUsd, priceWithSafetyMargin, liquidationRatio) => {
       const [symbol] = collateralTypeName.split('-');
@@ -71,19 +73,19 @@ export const collateralTypePrice = {
         .times(ratioDaiUsd.toNumber())
         .times(liquidationRatio.toNumber());
       return ratio(price);
-    }
-  })
+    },
+  }),
 };
 
 export const collateralTypesPrices = {
-  generate: types => ({
+  generate: (types) => ({
     dependencies: () =>
-      types.map(collateralTypeName => [
+      types.map((collateralTypeName) => [
         COLLATERAL_TYPE_PRICE,
-        collateralTypeName
+        collateralTypeName,
       ]),
-    computed: (...prices) => prices
-  })
+    computed: (...prices) => prices,
+  }),
 };
 
 export const defaultCollateralTypesPrices = {
@@ -91,126 +93,137 @@ export const defaultCollateralTypesPrices = {
     dependencies: () =>
       defaultCdpTypes.map(({ ilk: collateralTypeName }) => [
         COLLATERAL_TYPE_PRICE,
-        collateralTypeName
+        collateralTypeName,
       ]),
-    computed: (...prices) => prices
-  })
+    computed: (...prices) => prices,
+  }),
 };
 
 export const vaultTypeAndAddress = {
-  generate: id => ({
-    dependencies: [[VAULT_TYPE, id], [VAULT_ADDRESS, id]],
-    computed: (vaultType, vaultAddress) => [vaultType, vaultAddress]
-  })
+  generate: (id) => ({
+    dependencies: [
+      [VAULT_TYPE, id],
+      [VAULT_ADDRESS, id],
+    ],
+    computed: (vaultType, vaultAddress) => [vaultType, vaultAddress],
+  }),
 };
 
 export const vaultExternalOwner = {
-  generate: id => ({
-    dependencies: [[PROXY_OWNER, [VAULT_OWNER, id]]],
-    // TODO: throw error if no owner (DSProxy contract doesn't exist)
-    computed: owner => owner
-  })
+  generate: (id) => ({
+    dependencies: [
+      [PROXY_OWNER, [VAULT_OWNER, id]],
+      [VAULT_OWNER, id],
+    ],
+    computed: (owner) => owner,
+  }),
 };
 
 export const vaultCollateralAndDebt = {
   generate: (vaultType, vaultAddress) => ({
     dependencies: [
       [ENCUMBERED_COLLATERAL, vaultType, vaultAddress],
-      [ENCUMBERED_DEBT, vaultType, vaultAddress]
+      [ENCUMBERED_DEBT, vaultType, vaultAddress],
     ],
     computed: (encumberedCollateral, encumberedDebt) => [
       encumberedCollateral,
-      encumberedDebt
-    ]
-  })
+      encumberedDebt,
+    ],
+  }),
 };
 
-// TODO This should also account for unencumbered collateral which is collateral on the
-// join adapter
+// TODO This should also account for unencumbered collateral which is collateral
+// on the join adapter
 export const collateralAmount = {
-  generate: id => ({
+  generate: (id) => ({
     dependencies: [
       [VAULT_TYPE, id],
-      [ENCUMBERED_COLLATERAL, [VAULT_TYPE, id], [VAULT_ADDRESS, id]]
+      [ENCUMBERED_COLLATERAL, [VAULT_TYPE, id], [VAULT_ADDRESS, id]],
     ],
     computed: (vaultType, encumberedCollateral) => {
       const [symbol] = vaultType.split('-');
       const currency = createCurrency(symbol);
       return currency(encumberedCollateral);
-    }
-  })
+    },
+  }),
 };
 
 export const collateralValue = {
-  generate: id => ({
+  generate: (id) => ({
     dependencies: [
       [COLLATERAL_TYPE_PRICE, [VAULT_TYPE, id]],
-      [COLLATERAL_AMOUNT, id]
+      [COLLATERAL_AMOUNT, id],
     ],
     computed: (collateralTypePrice, collateralAmount) =>
-      calcCollateralValue(collateralAmount, collateralTypePrice)
-  })
+      calcCollateralValue(collateralAmount, collateralTypePrice),
+  }),
 };
 
 export const debtValue = {
-  generate: id => ({
+  generate: (id) => ({
     dependencies: [
       [ENCUMBERED_DEBT, [VAULT_TYPE, id], [VAULT_ADDRESS, id]],
-      [DEBT_SCALING_FACTOR, [VAULT_TYPE, id]]
+      [DEBT_SCALING_FACTOR, [VAULT_TYPE, id]],
     ],
     computed: (encumberedDebt, debtScalingFactor) => {
       return MDAI(encumberedDebt).times(debtScalingFactor);
-    }
-  })
+    },
+  }),
 };
 
 export const collateralizationRatio = {
-  generate: id => ({
-    dependencies: [[COLLATERAL_VALUE, id], [DEBT_VALUE, id]],
-    computed: (collateralValue, debtValue) =>
-      calcCollateralizationRatio(collateralValue, debtValue)
-  })
-};
-
-export const liquidationPrice = {
-  generate: id => ({
-    dependencies: [
-      [COLLATERAL_AMOUNT, id],
-      [DEBT_VALUE, id],
-      [LIQUIDATION_RATIO, [VAULT_TYPE, id]]
-    ],
-    computed: (collateralAmount, debtValue, liquidationRatio) =>
-      calcLiquidationPrice(collateralAmount, debtValue, liquidationRatio)
-  })
-};
-
-export const daiAvailable = {
-  generate: id => ({
+  generate: (id) => ({
     dependencies: [
       [COLLATERAL_VALUE, id],
       [DEBT_VALUE, id],
-      [LIQUIDATION_RATIO, [VAULT_TYPE, id]]
+    ],
+    computed: (collateralValue, debtValue) =>
+      calcCollateralizationRatio(collateralValue, debtValue),
+  }),
+};
+
+export const liquidationPrice = {
+  generate: (id) => ({
+    dependencies: [
+      [COLLATERAL_AMOUNT, id],
+      [DEBT_VALUE, id],
+      [LIQUIDATION_RATIO, [VAULT_TYPE, id]],
+    ],
+    computed: (collateralAmount, debtValue, liquidationRatio) =>
+      calcLiquidationPrice(collateralAmount, debtValue, liquidationRatio),
+  }),
+};
+
+export const daiAvailable = {
+  generate: (id) => ({
+    dependencies: [
+      [COLLATERAL_VALUE, id],
+      [DEBT_VALUE, id],
+      [LIQUIDATION_RATIO, [VAULT_TYPE, id]],
     ],
     computed: (collateralValue, debtValue, liquidationRatio) =>
-      calcDaiAvailable(collateralValue, debtValue, liquidationRatio)
-  })
+      calcDaiAvailable(collateralValue, debtValue, liquidationRatio),
+  }),
 };
 
 export const minSafeCollateralAmount = {
-  generate: id => ({
+  generate: (id) => ({
     dependencies: [
       [DEBT_VALUE, id],
       [LIQUIDATION_RATIO, [VAULT_TYPE, id]],
-      [COLLATERAL_TYPE_PRICE, [VAULT_TYPE, id]]
+      [COLLATERAL_TYPE_PRICE, [VAULT_TYPE, id]],
     ],
     computed: (debtValue, liquidationRatio, price) =>
-      calcMinSafeCollateralAmount(debtValue, liquidationRatio, price)
-  })
+      calcMinSafeCollateralAmount(debtValue, liquidationRatio, price),
+  }),
 };
 
 export const collateralAvailableAmount = {
-  generate: id => ({
-    dependencies: [[COLLATERAL_AMOUNT, id], [MIN_SAFE_COLLATERAL_AMOUNT, id]],
+  generate: (id) => ({
+    dependencies: [
+      [COLLATERAL_AMOUNT, id],
+      [MIN_SAFE_COLLATERAL_AMOUNT, id],
+    ],
     computed: (collateralAmount, minSafeCollateralAmount) => {
       if (
         minSafeCollateralAmount.toBigNumber().gt(collateralAmount.toBigNumber())
@@ -219,30 +232,30 @@ export const collateralAvailableAmount = {
       } else {
         return collateralAmount.minus(minSafeCollateralAmount);
       }
-    }
-  })
+    },
+  }),
 };
 
 export const collateralAvailableValue = {
-  generate: id => ({
+  generate: (id) => ({
     dependencies: [
       [COLLATERAL_AVAILABLE_AMOUNT, id],
-      [COLLATERAL_TYPE_PRICE, [VAULT_TYPE, id]]
+      [COLLATERAL_TYPE_PRICE, [VAULT_TYPE, id]],
     ],
     computed: (collateralAvailableAmount, collateralTypePrice) =>
-      calcCollateralValue(collateralAvailableAmount, collateralTypePrice)
-  })
+      calcCollateralValue(collateralAvailableAmount, collateralTypePrice),
+  }),
 };
 
 export const collateralTypeData = {
-  generate: collateralTypeName => ({
+  generate: (collateralTypeName) => ({
     dependencies: [
       [COLLATERAL_TYPE_PRICE, collateralTypeName],
       [ANNUAL_STABILITY_FEE, collateralTypeName],
       [LIQUIDATION_PENALTY, collateralTypeName],
       [LIQUIDATION_RATIO, collateralTypeName],
       [PRICE_WITH_SAFETY_MARGIN, collateralTypeName],
-      [DEBT_FLOOR, collateralTypeName]
+      [DEBT_FLOOR, collateralTypeName],
     ],
     computed: (
       collateralTypePrice,
@@ -276,24 +289,24 @@ export const collateralTypeData = {
       },
       calculateMaxDai(collateralAmount) {
         return priceWithSafetyMargin.times(collateralAmount);
-      }
-    })
-  })
+      },
+    }),
+  }),
 };
 
 export const collateralTypesData = {
-  generate: types => ({
+  generate: (types) => ({
     dependencies: () =>
-      types.map(collateralTypeName => [
+      types.map((collateralTypeName) => [
         COLLATERAL_TYPE_DATA,
-        collateralTypeName
+        collateralTypeName,
       ]),
-    computed: (...collateralTypes) => collateralTypes
-  })
+    computed: (...collateralTypes) => collateralTypes,
+  }),
 };
 
 export const vault = {
-  generate: id => ({
+  generate: (id) => ({
     dependencies: [
       [VAULT_TYPE, id],
       [VAULT_ADDRESS, id],
@@ -314,7 +327,7 @@ export const vault = {
       [LIQUIDATION_RATIO, [VAULT_TYPE, id]],
       [LIQUIDATION_PENALTY, [VAULT_TYPE, id]],
       [ANNUAL_STABILITY_FEE, [VAULT_TYPE, id]],
-      [DEBT_FLOOR, [VAULT_TYPE, id]]
+      [DEBT_FLOOR, [VAULT_TYPE, id]],
     ],
     computed: (
       vaultType,
@@ -362,7 +375,7 @@ export const vault = {
       calculateLiquidationPrice({
         collateralAmount = this.collateralAmount,
         debtValue = this.debtValue,
-        liquidationRatio = this.liquidationRatio
+        liquidationRatio = this.liquidationRatio,
       } = {}) {
         if (!collateralAmount || !debtValue || !liquidationRatio) return;
         return calcLiquidationPrice(
@@ -373,30 +386,31 @@ export const vault = {
       },
       calculateCollateralizationRatio({
         collateralValue = this.collateralValue,
-        debtValue = this.debtValue
+        debtValue = this.debtValue,
       } = {}) {
         if (!collateralValue || !debtValue) return;
         return calcCollateralizationRatio(collateralValue, debtValue)
           .times(100)
           .toNumber();
-      }
-    })
-  })
+      },
+    }),
+  }),
+  validate: { args: validateVaultId },
 };
 
 export const daiLockedInDsr = {
-  generate: address => ({
+  generate: (address) => ({
     dependencies: [
       [SAVINGS_DAI, [PROXY_ADDRESS, address]],
-      [SAVINGS_RATE_ACCUMULATOR]
+      [SAVINGS_RATE_ACCUMULATOR],
     ],
     computed: (savingsDai, savingsRateAccumulator) => {
       return DSR_DAI(savingsDai.times(savingsRateAccumulator));
-    }
+    },
   }),
   validate: {
-    args: validateAddress`Invalid address: ${'address'}`
-  }
+    args: validateAddress`Invalid address for daiLockedInDsr: ${'address'}`,
+  },
 };
 
 export const totalDaiLockedInDsr = {
@@ -404,8 +418,8 @@ export const totalDaiLockedInDsr = {
     dependencies: [[TOTAL_SAVINGS_DAI], [SAVINGS_RATE_ACCUMULATOR]],
     computed: (totalSavingsDai, savingsRateAccumulator) => {
       return DSR_DAI(totalSavingsDai.times(savingsRateAccumulator));
-    }
-  })
+    },
+  }),
 };
 
 export const balance = {
@@ -416,8 +430,8 @@ export const balance = {
       }
       return [[TOKEN_BALANCE, address, symbol]];
     },
-    computed: v => v
-  })
+    computed: (v) => v,
+  }),
 };
 
 export const allowance = {
@@ -425,14 +439,14 @@ export const allowance = {
     dependencies: [
       symbol === 'ETH'
         ? [[ALLOWANCE_AMOUNT]]
-        : [TOKEN_ALLOWANCE, address, [PROXY_ADDRESS, address], symbol]
+        : [TOKEN_ALLOWANCE, address, [PROXY_ADDRESS, address], symbol],
     ],
-    computed: v => v.isEqualTo(ALLOWANCE_AMOUNT)
-  })
+    computed: (v) => v.isEqualTo(ALLOWANCE_AMOUNT),
+  }),
 };
 
 export const savings = {
-  generate: address => ({
+  generate: (address) => ({
     dependencies: [
       [ANNUAL_DAI_SAVINGS_RATE],
       [DAI_SAVINGS_RATE],
@@ -440,7 +454,7 @@ export const savings = {
       [DAI_LOCKED_IN_DSR, address],
       [PROXY_ADDRESS, address],
       [SAVINGS_RATE_ACCUMULATOR],
-      [SAVINGS_DAI, [PROXY_ADDRESS, address]]
+      [SAVINGS_DAI, [PROXY_ADDRESS, address]],
     ],
     computed: (
       annualDaiSavingsRate,
@@ -457,16 +471,16 @@ export const savings = {
       daiLockedInDsr,
       proxyAddress,
       savingsRateAccumulator,
-      savingsDai
-    })
+      savingsDai,
+    }),
   }),
   validate: {
-    args: validateAddress`Invalid address: ${'address'}`
-  }
+    args: validateAddress`Invalid address for savings: ${'address'}`,
+  },
 };
 
 export const userVaultsList = {
-  generate: address => ({
+  generate: (address) => ({
     dependencies: ({ get }) => {
       const cdpManagerAddress = get('smartContract').getContractAddress(
         'CDP_MANAGER'
@@ -474,7 +488,7 @@ export const userVaultsList = {
       return [
         [USER_VAULT_IDS, cdpManagerAddress, [PROXY_ADDRESS, address]],
         [USER_VAULT_ADDRESSES, cdpManagerAddress, [PROXY_ADDRESS, address]],
-        [USER_VAULT_TYPES, cdpManagerAddress, [PROXY_ADDRESS, address]]
+        [USER_VAULT_TYPES, cdpManagerAddress, [PROXY_ADDRESS, address]],
       ];
     },
     computed: (ids, addresses, types) =>
@@ -484,34 +498,34 @@ export const userVaultsList = {
           {
             vaultId: id,
             vaultAddress: addresses[idx],
-            vaultType: types[idx]
-          }
+            vaultType: types[idx],
+          },
         ],
         []
-      )
+      ),
   }),
   validate: {
-    args: validateAddress`Invalid address: ${'address'}`
-  }
+    args: validateAddress`Invalid address for userVaultsList: ${'address'}`,
+  },
 };
 
 export const userVaultsData = {
-  generate: ids => ({
-    dependencies: ids.map(id => [VAULT, id]),
-    computed: (...vaults) => vaults
-  })
+  generate: (ids) => ({
+    dependencies: ids.map((id) => [VAULT, id]),
+    computed: (...vaults) => vaults,
+  }),
 };
 
 export const collateralDebt = {
-  generate: collateralTypeName => ({
+  generate: (collateralTypeName) => ({
     dependencies: [
       [TOTAL_ENCUMBERED_DEBT, collateralTypeName],
-      [DEBT_SCALING_FACTOR, collateralTypeName]
+      [DEBT_SCALING_FACTOR, collateralTypeName],
     ],
     computed: (totalEncumberedDebt, debtScalingFactor) => {
       return MDAI(totalEncumberedDebt).times(debtScalingFactor);
-    }
-  })
+    },
+  }),
 };
 
 export const collateralTypeCollateralization = {
@@ -519,7 +533,7 @@ export const collateralTypeCollateralization = {
     dependencies: [
       [COLLATERAL_DEBT, collateralTypeName],
       [COLLATERAL_TYPE_PRICE, collateralTypeName],
-      [ADAPTER_BALANCE, collateralTypeName]
+      [ADAPTER_BALANCE, collateralTypeName],
     ],
     computed: (debt, price, amount) => {
       const collateral = calcCollateralValue(amount, price.toBigNumber());
@@ -530,31 +544,31 @@ export const collateralTypeCollateralization = {
       return percentage
         ? ratio
         : { collateralValue: collateral, debtValue: debt };
-    }
-  })
+    },
+  }),
 };
 
 export const systemCollateralization = {
-  generate: vaultTypes => ({
-    dependencies: vaultTypes.map(vaultType => [
+  generate: (vaultTypes) => ({
+    dependencies: vaultTypes.map((vaultType) => [
       COLLATERAL_TYPE_COLLATERALIZATION,
       vaultType,
-      false
+      false,
     ]),
     computed: (...collateralizationValues) => {
       const {
         totalCollateralValue,
-        totalDebtValue
+        totalDebtValue,
       } = collateralizationValues.reduce(
         (acc, { collateralValue, debtValue }) => ({
           totalCollateralValue: acc.totalCollateralValue.plus(
             collateralValue.toBigNumber()
           ),
-          totalDebtValue: acc.totalDebtValue.plus(debtValue.toBigNumber())
+          totalDebtValue: acc.totalDebtValue.plus(debtValue.toBigNumber()),
         }),
         {
           totalCollateralValue: BigNumber(0),
-          totalDebtValue: BigNumber(0)
+          totalDebtValue: BigNumber(0),
         }
       );
 
@@ -562,12 +576,12 @@ export const systemCollateralization = {
         totalCollateralValue,
         totalDebtValue
       ).times(100);
-    }
-  })
+    },
+  }),
 };
 
 export const proxyOwner = {
-  generate: address => ({
+  generate: (address) => ({
     dependencies: ({ get }) => [
       [
         async () => {
@@ -579,14 +593,14 @@ export const proxyOwner = {
           } catch (e) {
             return null;
           }
-        }
-      ]
+        },
+      ],
     ],
-    computed: owner => owner
+    computed: (owner) => owner,
   }),
   validate: {
-    args: validateAddress`Invalid address for proxyOwner: ${'address'}`
-  }
+    args: validateAddress`Invalid address for proxyOwner: ${'address'}`,
+  },
 };
 
 export default {
@@ -618,5 +632,5 @@ export default {
   systemCollateralization,
   proxyOwner,
   collateralTypeData,
-  collateralTypesData
+  collateralTypesData,
 };

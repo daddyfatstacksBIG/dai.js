@@ -1,11 +1,13 @@
 import { PrivateService } from '@makerdao/services-core';
-import contracts from '../../contracts/contracts';
-import tokens from '../../contracts/tokens';
-import networks from '../../contracts/networks';
-import { Contract } from 'ethers';
-import { wrapContract } from './smartContract/wrapContract';
-import mapValues from 'lodash/mapValues';
 import assert from 'assert';
+import { Contract } from 'ethers';
+import mapValues from 'lodash/mapValues';
+
+import contracts from '../../contracts/contracts';
+import networks, { contractAddressesInfo } from '../../contracts/networks';
+import tokens from '../../contracts/tokens';
+
+import { wrapContract } from './smartContract/wrapContract';
 
 export default class SmartContractService extends PrivateService {
   constructor(name = 'smartContract') {
@@ -30,9 +32,7 @@ export default class SmartContractService extends PrivateService {
 
     this._addressOverrides = settings.addressOverrides || {};
 
-    this.get('transactionManager')
-      .get('proxy')
-      .setSmartContractService(this);
+    this.get('transactionManager').get('proxy').setSmartContractService(this);
   }
 
   getContractByAddressAndAbi(address, abi, { name, wrap = true } = {}) {
@@ -57,7 +57,7 @@ export default class SmartContractService extends PrivateService {
   getContractAddresses() {
     return mapValues(
       this._getAllContractInfo(),
-      versions => findLatestContractInfo(versions).address
+      (versions) => findLatestContractInfo(versions).address
     );
   }
 
@@ -65,7 +65,7 @@ export default class SmartContractService extends PrivateService {
     const info = this._getContractInfo(name, version);
     return this.getContractByAddressAndAbi(info.address, info.abi, {
       name,
-      wrap
+      wrap,
     });
   }
 
@@ -76,7 +76,7 @@ export default class SmartContractService extends PrivateService {
       const versions = contracts[name];
       if (
         versions.find(
-          info => info.address && info.address.toUpperCase() === address
+          (info) => info.address && info.address.toUpperCase() === address
         )
       ) {
         return name;
@@ -113,8 +113,11 @@ export default class SmartContractService extends PrivateService {
 
   _getAllContractInfo() {
     let { networkName } = this.get('web3');
-    const mapping = networks.find(m => m.name === networkName);
+    const mapping = networks.find((m) => m.name === networkName);
     assert(mapping, `Network "${networkName}" not found in mapping.`);
+
+    if (!mapping.contracts)
+      mapping.contracts = contractAddressesInfo(this._addressOverrides);
 
     if (!this._contractInfoCache) this._contractInfoCache = {};
     if (!this._contractInfoCache[networkName]) {
@@ -126,13 +129,11 @@ export default class SmartContractService extends PrivateService {
         allContractInfo,
         (versions, name) => {
           const latest = findLatestContractInfo(versions);
-
           const address =
             getSingleAddress(this._addressOverrides[name], networkName) ||
             getSingleAddress(latest.address, networkName);
-
           return address !== latest.address
-            ? versions.map(v => (v === latest ? { ...latest, address } : v))
+            ? versions.map((v) => (v === latest ? { ...latest, address } : v))
             : versions;
         }
       );
@@ -143,8 +144,8 @@ export default class SmartContractService extends PrivateService {
 }
 
 function findContractInfoForVersion(versions, version) {
-  if (!version) version = Math.max(...versions.map(info => info.version));
-  return versions.find(info => info.version === version);
+  if (!version) version = Math.max(...versions.map((info) => info.version));
+  return versions.find((info) => info.version === version);
 }
 
 function findLatestContractInfo(versions) {

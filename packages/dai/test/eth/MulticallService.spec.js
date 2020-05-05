@@ -1,28 +1,24 @@
 import TestAccountProvider from '@makerdao/test-helpers/src/TestAccountProvider';
-import Maker from '../../src/index';
 import BigNumber from 'bignumber.js';
 
+import Maker from '../../src/index';
 import schemas, {
-  TOTAL_CDP_DEBT,
-  ETH_PRICE,
   CDP_COLLATERAL,
-  CDP_DEBT,
   CDP_COLLATERAL_VALUE,
+  CDP_DEBT,
+  CDP_OWNER,
+  ETH_PRICE,
   LAST_CREATED_CDP_COLLATERAL_VALUE,
-  CDP_OWNER
+  TOTAL_CDP_DEBT,
 } from '../helpers/schemas';
 
 let maker, multicall, watcher, address, cdpId1, cdpId2;
 
 beforeAll(async () => {
   maker = await Maker.create('test', {
-    web3: {
-      pollingInterval: 100
-    },
-    multicall: {
-      debounceTime: 1
-    },
-    log: false
+    web3: { pollingInterval: 100 },
+    multicall: { debounceTime: 1 },
+    log: false,
   });
   await maker.authenticate();
   address = TestAccountProvider.nextAddress();
@@ -31,8 +27,12 @@ beforeAll(async () => {
   multicall.registerSchemas(schemas);
 
   const proxyAddress = await maker.service('proxy').ensureProxy();
-  ({ id: cdpId1 } = {}) = await maker.service('cdp').openProxyCdpLockEthAndDrawDai(1, 100, proxyAddress); // prettier-ignore
-  ({ id: cdpId2 } = {}) = await maker.service('cdp').openProxyCdpLockEthAndDrawDai(5, 100, proxyAddress); // prettier-ignore
+  ({id : cdpId1} = {}) =
+      await maker.service('cdp').openProxyCdpLockEthAndDrawDai(
+          1, 100, proxyAddress); // prettier-ignore
+  ({id : cdpId2} = {}) =
+      await maker.service('cdp').openProxyCdpLockEthAndDrawDai(
+          5, 100, proxyAddress); // prettier-ignore
   await maker.service('cdp').openProxyCdpLockEthAndDrawDai(1, 50, proxyAddress);
 });
 
@@ -53,13 +53,13 @@ test('get eth balance via multicall', async () => {
   watcher.tap(() => [
     {
       call: ['getEthBalance(address)(uint256)', address],
-      returns: [['ETH_BALANCE', v => fromWei(v.toString())]]
-    }
+      returns: [['ETH_BALANCE', (v) => fromWei(v.toString())]],
+    },
   ]);
   watcher.start();
   const results = {};
-  const batchSub = watcher.subscribe(update => (results[update.type] = update.value.toString()));
-  const newBlockSub = watcher.onNewBlock(number => (results.blockNumber = number));
+  const batchSub = watcher.subscribe((update) => (results[update.type] = update.value.toString()));
+  const newBlockSub = watcher.onNewBlock((number) => (results.blockNumber = number));
   await watcher.awaitInitialFetch();
   batchSub.unsub();
   newBlockSub.unsub();
@@ -109,10 +109,9 @@ test('computed observable with nested dependencies', async () => {
   expect(multicall.totalActiveSchemas).toEqual(3);
 });
 
-test('observable throws args validation error', () => {
-  expect(() => {
-    maker.latest(CDP_COLLATERAL, -9000);
-  }).toThrow(/invalid cdp id/i);
+test('observable throws args validation error', async () => {
+  const promise = maker.latest(CDP_COLLATERAL, -9000);
+  await expect(promise).rejects.toThrow(/invalid cdp id/i);
 });
 
 test('observable throws invalid key error', () => {
@@ -121,18 +120,23 @@ test('observable throws invalid key error', () => {
   }).toThrow(/invalid observable key/i);
 });
 
-test('observable throws insufficient args error', () => {
+test('observable throws no registered schema error', () => {
   expect(() => {
-    maker.latest(CDP_OWNER);
-  }).toThrow(/expects.*argument/i);
+    maker.latest('foo');
+  }).toThrow(/no registered schema/i);
+});
+
+test('observable throws insufficient args error', async () => {
+  const promise = maker.latest(CDP_OWNER);
+  await expect(promise).rejects.toThrow(/expects.*argument/i);
 });
 
 test('observable throws result validation error', async () => {
-  const cdpCollateral = maker.latest(CDP_COLLATERAL, cdpId2);
-  await expect(cdpCollateral).rejects.toThrow(/Φ/);
+  const promise = maker.latest(CDP_COLLATERAL, cdpId2);
+  await expect(promise).rejects.toThrow(/Φ/);
 });
 
 test('observable throws result validation error 2', async () => {
-  const cdpOwner = maker.latest(CDP_OWNER, 9000);
-  await expect(cdpOwner).rejects.toThrow();
+  const promise = maker.latest(CDP_OWNER, 9000);
+  await expect(promise).rejects.toThrow();
 });

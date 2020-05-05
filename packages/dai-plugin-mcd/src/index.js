@@ -1,42 +1,37 @@
+import { createCurrency, createCurrencyRatio } from '@makerdao/currency';
 import assert from 'assert';
+import BigNumber from 'bignumber.js';
 import mapValues from 'lodash/mapValues';
 import reduce from 'lodash/reduce';
 import uniqBy from 'lodash/uniqBy';
-import { createCurrency, createCurrencyRatio } from '@makerdao/currency';
-import testnetAddresses from '../contracts/addresses/testnet.json';
+
+import abiMap from '../contracts/abiMap.json';
 import kovanAddresses from '../contracts/addresses/kovan.json';
 import mainnetAddresses from '../contracts/addresses/mainnet.json';
-import abiMap from '../contracts/abiMap.json';
-import CdpManager from './CdpManager';
-import SavingsService from './SavingsService';
-import CdpTypeService from './CdpTypeService';
+import testnetAddresses from '../contracts/addresses/testnet.json';
+
 import AuctionService from './AuctionService';
-import SystemDataService from './SystemDataService';
-import QueryApiMcdService from './QueryApiMcdService';
+import CdpManager from './CdpManager';
+import CdpTypeService from './CdpTypeService';
 import { ServiceRoles as ServiceRoles_ } from './constants';
-import BigNumber from 'bignumber.js';
+import SavingsService from './SavingsService';
+import SystemDataService from './SystemDataService';
 
 export const ServiceRoles = ServiceRoles_;
-const {
-  CDP_MANAGER,
-  CDP_TYPE,
-  SYSTEM_DATA,
-  AUCTION,
-  QUERY_API,
-  SAVINGS
-} = ServiceRoles;
+const { CDP_MANAGER, CDP_TYPE, SYSTEM_DATA, AUCTION, SAVINGS } = ServiceRoles;
 
 // look up contract ABIs using abiMap.
 // if an exact match is not found, prefix-match against keys ending in *, e.g.
 // MCD_JOIN_ETH_B matches MCD_JOIN_*
-// this implementation assumes that all contracts in kovan.json are also in testnet.json
+// this implementation assumes that all contracts in kovan.json are also in
+// testnet.json
 let addContracts = reduce(
   testnetAddresses,
   (result, testnetAddress, name) => {
     let abiName = abiMap[name];
     if (!abiName) {
       const prefix = Object.keys(abiMap).find(
-        k =>
+        (k) =>
           k.substring(k.length - 1) == '*' &&
           k.substring(0, k.length - 1) == name.substring(0, k.length - 1)
       );
@@ -48,8 +43,8 @@ let addContracts = reduce(
         address: {
           testnet: testnetAddress,
           kovan: kovanAddresses[name],
-          mainnet: mainnetAddresses[name]
-        }
+          mainnet: mainnetAddresses[name],
+        },
       };
     }
     return result;
@@ -80,7 +75,7 @@ export const GNT = createCurrency('GNT');
 
 export const defaultCdpTypes = [
   { currency: ETH, ilk: 'ETH-A' },
-  { currency: BAT, ilk: 'BAT-A' }
+  { currency: BAT, ilk: 'BAT-A' },
 ];
 
 export const SAI = createCurrency('SAI');
@@ -91,15 +86,15 @@ export const ALLOWANCE_AMOUNT = BigNumber(
 
 export const defaultTokens = [
   ...new Set([
-    ...defaultCdpTypes.map(type => type.currency),
+    ...defaultCdpTypes.map((type) => type.currency),
     MDAI,
     MWETH,
     SAI,
-    DSR_DAI
-  ])
+    DSR_DAI,
+  ]),
 ];
 
-export default {
+export const McdPlugin = {
   addConfig: (
     _,
     { cdpTypes = defaultCdpTypes, addressOverrides, prefetch = true } = {}
@@ -107,7 +102,7 @@ export default {
     if (addressOverrides) {
       addContracts = mapValues(addContracts, (contractDetails, name) => ({
         ...contractDetails,
-        address: addressOverrides[name] || contractDetails.address
+        address: addressOverrides[name] || contractDetails.address,
       }));
     }
     const tokens = uniqBy(cdpTypes, 'currency').map(
@@ -119,7 +114,7 @@ export default {
           currency,
           abi: data.abi,
           address: data.address,
-          decimals: data.decimals || decimals
+          decimals: data.decimals || decimals,
         };
       }
     );
@@ -133,23 +128,23 @@ export default {
         erc20: [
           { currency: MDAI, address: addContracts.MCD_DAI.address },
           { currency: MWETH, address: addContracts.ETH.address },
-          ...tokens
-        ]
+          ...tokens,
+        ],
       },
       additionalServices: [
         CDP_MANAGER,
         CDP_TYPE,
         AUCTION,
         SYSTEM_DATA,
-        QUERY_API,
-        SAVINGS
+        SAVINGS,
       ],
       [CDP_TYPE]: [CdpTypeService, { cdpTypes, prefetch }],
       [CDP_MANAGER]: CdpManager,
       [SAVINGS]: SavingsService,
       [AUCTION]: AuctionService,
       [SYSTEM_DATA]: SystemDataService,
-      [QUERY_API]: QueryApiMcdService
     };
-  }
+  },
 };
+
+export default McdPlugin;

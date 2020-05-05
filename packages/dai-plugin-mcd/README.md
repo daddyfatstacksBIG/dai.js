@@ -6,7 +6,7 @@ multi-collateral dai contracts
 ### Example usage
 
 ```js
-import McdPlugin, { ETH, REP, MDAI } from '@makerdao/dai-plugin-mcd';
+import { McdPlugin, ETH, REP, MDAI } from '@makerdao/dai-plugin-mcd';
 import Maker from '@makerdao/dai';
 import { createCurrency } from '@makerdao/currency';
 import { tokenAddress, tokenAbi } from 'someOtherTokenData';
@@ -25,10 +25,10 @@ const maker = await Maker.create('http', {
           { currency: ETH, ilk: 'ETH-A' },
           { currency: REP, ilk: 'REP-A' },
           { currency: TOK, ilk: 'TOK-Z', address: tokenAddress, abi: tokenAbi },
-        ]
-      }
-    ]
-  ]
+        ],
+      },
+    ],
+  ],
 });
 
 await maker.service('proxy').ensureProxy();
@@ -38,7 +38,9 @@ const cdp2 = await cdpManager.openLockAndDraw('ETH-A', ETH(50), MDAI(1000));
 const cdp3 = await cdpManager.openLockAndDraw('TOK-Z', TOK(50), MDAI(1000));
 ```
 
-Please visit [docs.makerdao.com](https://docs.makerdao.com/building-with-maker/daijs) for more documentation.
+Please visit
+[docs.makerdao.com](https://docs.makerdao.com/building-with-maker/daijs) for
+more documentation.
 
 ### Developer notes
 
@@ -54,7 +56,12 @@ Run the tests from the top-level dai.js directory.
 
 ### Local Development
 
-Due to the way that Babel7 handles transpilation it is not possible to use `yarn link` when locally developing this plugin, and importing it. We recommend using [yalc](https://github.com/whitecolor/yalc) instead. We've also found that a watcher tool called [sane](https://github.com/amasad/sane) is helpful.
+Due to the way that Babel7 handles transpilation it is not possible to use
+`yarn link` when locally developing this plugin, and importing it. We recommend
+using [yalc](https://github.com/whitecolor/yalc) instead. We've also found that
+a watcher tool called [sane](https://github.com/amasad/sane) is helpful.
 
 Steps to Run:
-1. In this directory run ```sane "yalc publish && cd [INSERT THE DIRECTORY OF THE PROJECT THAT IS IMPORTING THIS PLUGIN] && yalc link @makerdao/dai-plugin-mcd" src --wait=3 ```
+
+1. In this directory run
+   `sane "yalc publish && cd [INSERT THE DIRECTORY OF THE PROJECT THAT IS IMPORTING THIS PLUGIN] && yalc link @makerdao/dai-plugin-mcd" src --wait=3`

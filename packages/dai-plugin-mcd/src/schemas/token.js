@@ -1,7 +1,9 @@
-import { getMcdToken } from '../utils';
 import BigNumber from 'bignumber.js';
 
-import { TOKEN_BALANCE, TOKEN_ALLOWANCE_BASE } from './_constants';
+import { getMcdToken } from '../utils';
+
+import { TOKEN_ALLOWANCE_BASE, TOKEN_BALANCE } from './_constants';
+import { validateAddress } from './_validators';
 
 export const ALLOWANCE_AMOUNT = BigNumber(
   '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
@@ -29,21 +31,19 @@ export const tokenBalance = {
         symbol === 'ETH'
           ? 'getEthBalance(address)(uint256)'
           : 'balanceOf(address)(uint256)',
-        address
+        address,
       ],
-      transforms: {
-        [TOKEN_BALANCE]: v => currencyToken(v, 'wei')
-      }
+      transforms: { [TOKEN_BALANCE]: (v) => currencyToken(v, 'wei') },
     };
   },
-  returns: [TOKEN_BALANCE]
+  returns: [TOKEN_BALANCE],
 };
 
 export const tokenBalances = {
   generate: (address, symbols) => ({
-    dependencies: symbols.map(symbol => [TOKEN_BALANCE, address, symbol]),
-    computed: (...balances) => balances
-  })
+    dependencies: symbols.map((symbol) => [TOKEN_BALANCE, address, symbol]),
+    computed: (...balances) => balances,
+  }),
 };
 
 export const tokenAllowanceBase = {
@@ -62,10 +62,10 @@ export const tokenAllowanceBase = {
     return {
       id: `allowance.${symbol}.${address}`,
       contract: contract,
-      call: ['allowance(address,address)(uint256)', address, proxyAddress]
+      call: ['allowance(address,address)(uint256)', address, proxyAddress],
     };
   },
-  returns: [[TOKEN_ALLOWANCE_BASE, v => BigNumber(v)]]
+  returns: [[TOKEN_ALLOWANCE_BASE, (v) => BigNumber(v)]],
 };
 
 export const tokenAllowance = {
@@ -73,14 +73,23 @@ export const tokenAllowance = {
     dependencies: [
       symbol === 'ETH'
         ? [[ALLOWANCE_AMOUNT]]
-        : [TOKEN_ALLOWANCE_BASE, address, proxyAddress, symbol]
+        : [TOKEN_ALLOWANCE_BASE, address, proxyAddress, symbol],
     ],
-    computed: v => v
-  })
+    computed: (v) => v,
+  }),
+  validate: {
+    args: (address, proxyAddress) =>
+      validateAddress`Invalid address for tokenAllowance: ${'address'}`(
+        address
+      ) ||
+      validateAddress`Invalid proxy address for tokenAllowance: ${'address'}`(
+        proxyAddress
+      ),
+  },
 };
 
 export const adapterBalance = {
-  generate: collateralTypeName => ({
+  generate: (collateralTypeName) => ({
     dependencies: ({ get }) => {
       collateralTypeName =
         collateralTypeName === 'MDAI' ? 'DAI' : collateralTypeName;
@@ -92,12 +101,12 @@ export const adapterBalance = {
           get('smartContract').getContractAddress(
             `MCD_JOIN_${collateralTypeName.replace('-', '_')}`
           ),
-          tokenSymbol
-        ]
+          tokenSymbol,
+        ],
       ];
     },
-    computed: v => v
-  })
+    computed: (v) => v,
+  }),
 };
 
 export default {
@@ -107,5 +116,5 @@ export default {
   // computed
   adapterBalance,
   tokenAllowance,
-  tokenBalances
+  tokenBalances,
 };

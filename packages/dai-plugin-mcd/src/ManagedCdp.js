@@ -1,11 +1,12 @@
-import { castAsCurrency, stringToBytes } from './utils';
-import tracksTransactions, {
-  tracksTransactionsWithOptions
-} from './utils/tracksTransactions';
-import { ServiceRoles } from './constants';
 import assert from 'assert';
+
+import { ServiceRoles } from './constants';
 import { MDAI } from './index';
 import * as math from './math';
+import { castAsCurrency, stringToBytes } from './utils';
+import tracksTransactions, {
+  tracksTransactionsWithOptions,
+} from './utils/tracksTransactions';
 
 export default class ManagedCdp {
   constructor(id, ilk, cdpManager, options = { prefetch: true }) {
@@ -76,18 +77,6 @@ export default class ManagedCdp {
     return this._cdpManager.getOwner(this.id);
   }
 
-  async getEventHistory() {
-    const urn = await this.getUrn();
-    const events = await this._cdpManager
-      .get(ServiceRoles.QUERY_API)
-      .getCdpEventsForIlkAndUrn(this.ilk, urn);
-    return this._cdpManager.parseFrobEvents(
-      events,
-      this._cdpManager.get(ServiceRoles.CDP_TYPE)
-    );
-  }
-
-  //todo: add caching?
   getUrn() {
     return this._cdpManager.getUrn(this.id);
   }
@@ -176,7 +165,7 @@ export default class ManagedCdp {
     assert(freeAmount, 'free amount must be defined');
     freeAmount = castAsCurrency(freeAmount, this.currency);
     return this._cdpManager.wipeAllAndFree(this.id, this.ilk, freeAmount, {
-      promise
+      promise,
     });
   }
 
@@ -184,9 +173,9 @@ export default class ManagedCdp {
     if (!this._urnInfoPromise) {
       this._urnInfoPromise = this._cdpManager
         .getUrn(this.id)
-        .then(urn => this._cdpManager.vat.urns(stringToBytes(this.ilk), urn));
+        .then((urn) => this._cdpManager.vat.urns(stringToBytes(this.ilk), urn));
     }
-    return this._urnInfoPromise.then(value => {
+    return this._urnInfoPromise.then((value) => {
       this.cache.urnInfo = value;
       return value;
     });
@@ -206,10 +195,11 @@ export default class ManagedCdp {
   reset() {
     this._urnInfoPromise = null;
     this.cache = {};
+    this.type.reset();
   }
 }
 
-ManagedCdp.create = async function(createTxo, ilk, cdpManager) {
+ManagedCdp.create = async function (createTxo, ilk, cdpManager) {
   const id = cdpManager.getNewCdpId(createTxo);
   const cdp = new ManagedCdp(id, ilk, cdpManager);
   await cdp.prefetch();

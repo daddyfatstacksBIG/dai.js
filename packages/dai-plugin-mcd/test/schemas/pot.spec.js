@@ -1,18 +1,17 @@
-import { mcdMaker, setupCollateral } from '../helpers';
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
-import { ETH, MDAI } from '../../src';
-import { ServiceRoles } from '../../src/constants';
+import { restoreSnapshot, takeSnapshot } from '@makerdao/test-helpers';
 import BigNumber from 'bignumber.js';
 
+import { ETH, MDAI } from '../../src';
+import { ServiceRoles } from '../../src/constants';
 import {
-  TOTAL_SAVINGS_DAI,
-  SAVINGS_DAI,
-  DAI_SAVINGS_RATE,
   ANNUAL_DAI_SAVINGS_RATE,
-  DATE_EARNINGS_LAST_ACCRUED
+  DAI_SAVINGS_RATE,
+  DATE_EARNINGS_LAST_ACCRUED,
+  SAVINGS_DAI,
+  TOTAL_SAVINGS_DAI,
 } from '../../src/schemas';
-
 import potSchemas from '../../src/schemas/pot';
+import { mcdMaker, setupCollateral } from '../helpers';
 
 let maker, snapshotData, cdpMgr, saveService;
 
@@ -23,16 +22,14 @@ const ETH_A_PRICE = 180;
 beforeAll(async () => {
   maker = await mcdMaker({
     cdpTypes: [{ currency: ETH, ilk: 'ETH-A' }],
-    multicall: true
+    multicall: true,
   });
 
   snapshotData = await takeSnapshot(maker);
   maker.service('multicall').createWatcher();
   maker.service('multicall').registerSchemas(potSchemas);
   maker.service('multicall').start();
-  await setupCollateral(maker, 'ETH-A', {
-    price: ETH_A_PRICE
-  });
+  await setupCollateral(maker, 'ETH-A', { price: ETH_A_PRICE });
 
   cdpMgr = await maker.service(ServiceRoles.CDP_MANAGER);
   saveService = await maker.service(ServiceRoles.SAVINGS);
@@ -67,6 +64,17 @@ test(SAVINGS_DAI, async () => {
   );
   expect(BigNumber.isBigNumber(savingsDai)).toEqual(true);
   expect(savingsDai.toNumber()).toBeCloseTo(0.99995);
+});
+
+test(`${SAVINGS_DAI} using invalid account address`, async () => {
+  const promise1 = maker.latest(SAVINGS_DAI, '0xfoobar');
+  await expect(promise1).rejects.toThrow(/invalid/i);
+
+  const promise2 = maker.latest(
+    SAVINGS_DAI,
+    '0x0000000000000000000000000000000000000000'
+  );
+  await expect(promise2).rejects.toThrow(/invalid/i);
 });
 
 test(DAI_SAVINGS_RATE, async () => {

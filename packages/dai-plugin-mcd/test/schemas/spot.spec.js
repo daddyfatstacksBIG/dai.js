@@ -1,22 +1,19 @@
-import { mcdMaker } from '../helpers';
-import { takeSnapshot, restoreSnapshot } from '@makerdao/test-helpers';
-import { isValidAddressString } from '../../src/utils';
+import { restoreSnapshot, takeSnapshot } from '@makerdao/test-helpers';
+
 import testnetAddresses from '../../contracts/addresses/testnet';
-
 import {
-  PRICE_FEED_ADDRESS,
   LIQUIDATION_RATIO,
-  RATIO_DAI_USD
+  PRICE_FEED_ADDRESS,
+  RATIO_DAI_USD,
 } from '../../src/schemas';
-
 import spotSchemas from '../../src/schemas/spot';
+import { isValidAddressString } from '../../src/utils';
+import { mcdMaker } from '../helpers';
 
 let maker, snapshotData;
 
 beforeAll(async () => {
-  maker = await mcdMaker({
-    multicall: true
-  });
+  maker = await mcdMaker({ multicall: true });
 
   snapshotData = await takeSnapshot(maker);
   maker.service('multicall').createWatcher();
@@ -40,12 +37,11 @@ test(PRICE_FEED_ADDRESS, async () => {
   expect(ethAPriceFeedAddress.toLowerCase()).toEqual(PIP_ETH);
   expect(batAPriceFeedAddress.toLowerCase()).toEqual(PIP_BAT);
 
-  await expect(maker.latest(PRICE_FEED_ADDRESS, 'FOO')).rejects.toThrow(
-    /no collateral type/i
-  );
-  expect(() => {
-    maker.latest(PRICE_FEED_ADDRESS, '');
-  }).toThrow(/invalid collateral/i);
+  const promise1 = maker.latest(PRICE_FEED_ADDRESS, 'FOO');
+  await expect(promise1).rejects.toThrow(/no collateral type/i);
+
+  const promise2 = maker.latest(PRICE_FEED_ADDRESS, '');
+  await expect(promise2).rejects.toThrow(/invalid collateral/i);
 });
 
 test(LIQUIDATION_RATIO, async () => {
@@ -58,12 +54,11 @@ test(LIQUIDATION_RATIO, async () => {
   expect(ethALiquidationRatio.toNumber()).toEqual(1.5);
   expect(batALiquidationRatio.toNumber()).toEqual(2.0);
 
-  await expect(maker.latest(LIQUIDATION_RATIO, 'FOO')).rejects.toThrow(
-    /no collateral type/i
-  );
-  expect(() => {
-    maker.latest(LIQUIDATION_RATIO, '');
-  }).toThrow(/invalid collateral/i);
+  const promise1 = maker.latest(LIQUIDATION_RATIO, 'FOO');
+  await expect(promise1).rejects.toThrow(/no collateral type/i);
+
+  const promise2 = maker.latest(LIQUIDATION_RATIO, '');
+  await expect(promise2).rejects.toThrow(/invalid collateral/i);
 });
 
 test(RATIO_DAI_USD, async () => {
