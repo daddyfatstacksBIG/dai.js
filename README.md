@@ -1,14 +1,15 @@
 # Dai.js SDK monorepo
 
-[![Build Status][build]][build-url]
-[![Coverage Status][cover]][cover-url]
+[![Build Status][build]][build-url] [![Coverage Status][cover]][cover-url]
 
 Uses [Lerna](https://github.com/lerna/lerna). Automatically lints and prettifies
 code on commit.
 
 ## Documentation
 
-Please view `README.md` for each individual package (e.g. [packages/dai](https://github.com/makerdao/dai.js/blob/dev/packages/dai/README.md)) and/or [docs.makerdao.com](https://docs.makerdao.com/dai.js).
+Please view `README.md` for each individual package (e.g.
+[packages/dai](https://github.com/makerdao/dai.js/blob/dev/packages/dai/README.md))
+and/or [docs.makerdao.com](https://docs.makerdao.com/dai.js).
 
 ## Getting started
 
@@ -38,7 +39,9 @@ Run `yarn coverage` to generate a test coverage report.
 
 ### Creating a UMD build
 
-See [packages/dai/README.md](https://github.com/makerdao/dai.js/blob/dev/packages/dai/README.md#commands) for instructions.
+See
+[packages/dai/README.md](https://github.com/makerdao/dai.js/blob/dev/packages/dai/README.md#commands)
+for instructions.
 
 [build]: https://circleci.com/gh/makerdao/dai.js.svg?style=svg
 [build-url]: https://circleci.com/gh/makerdao/dai.js
