@@ -1,17 +1,17 @@
 import {
   restoreSnapshot,
   takeSnapshot,
-  TestAccountProvider
+  TestAccountProvider,
 } from '@makerdao/test-helpers';
 
-import schemas, {PROXY_ADDRESS} from '../../src/schemas';
-import {isValidAddressString} from '../../src/utils';
-import {mcdMaker} from '../helpers';
+import schemas, { PROXY_ADDRESS } from '../../src/schemas';
+import { isValidAddressString } from '../../src/utils';
+import { mcdMaker } from '../helpers';
 
 let maker, snapshotData, address, address2, proxyAddress, proxyAddress2;
 
 beforeAll(async () => {
-  maker = await mcdMaker({multicall : true});
+  maker = await mcdMaker({ multicall: true });
   snapshotData = await takeSnapshot(maker);
   maker.service('multicall').createWatcher();
   maker.service('multicall').registerSchemas(schemas);
@@ -20,13 +20,15 @@ beforeAll(async () => {
   address = maker.service('web3').currentAddress();
   proxyAddress = await maker.service('proxy').currentProxy();
   const account = TestAccountProvider.nextAccount();
-  await maker.addAccount({...account, type : 'privateKey'});
+  await maker.addAccount({ ...account, type: 'privateKey' });
   maker.useAccount(account.address);
   address2 = maker.service('web3').currentAddress();
   proxyAddress2 = await maker.service('proxy').ensureProxy();
 });
 
-afterAll(async () => { await restoreSnapshot(snapshotData, maker); });
+afterAll(async () => {
+  await restoreSnapshot(snapshotData, maker);
+});
 
 test(PROXY_ADDRESS, async () => {
   const proxy1 = await maker.latest(PROXY_ADDRESS, address);
@@ -45,6 +47,8 @@ test(`${PROXY_ADDRESS} using invalid account address`, async () => {
 
 test(`${PROXY_ADDRESS} using account with no proxy`, async () => {
   const proxy = await maker.latest(
-      PROXY_ADDRESS, '0x1111111111111111111111111111111111111111');
+    PROXY_ADDRESS,
+    '0x1111111111111111111111111111111111111111'
+  );
   expect(proxy).toBeNull();
 });

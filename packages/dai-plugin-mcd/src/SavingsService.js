@@ -1,43 +1,56 @@
-import {PublicService} from '@makerdao/services-core';
+import { PublicService } from '@makerdao/services-core';
 import BigNumber from 'bignumber.js';
 
-import {ServiceRoles} from './constants';
-import {RAY, SECONDS_PER_YEAR, WAD} from './constants';
-import {getDsrEventHistory} from './EventHistory';
-import {MDAI} from './index';
+import { ServiceRoles } from './constants';
+import { RAY, SECONDS_PER_YEAR, WAD } from './constants';
+import { getDsrEventHistory } from './EventHistory';
+import { MDAI } from './index';
 import tracksTransactions from './utils/tracksTransactions';
 
 export default class SavingsService extends PublicService {
   constructor(name = ServiceRoles.SAVINGS) {
     super(name, [
-      'smartContract', 'proxy', 'accounts', 'web3', ServiceRoles.SYSTEM_DATA
+      'smartContract',
+      'proxy',
+      'accounts',
+      'web3',
+      ServiceRoles.SYSTEM_DATA,
     ]);
   }
 
   @tracksTransactions
-  async join(amountInDai, {promise}) {
+  async join(amountInDai, { promise }) {
     await this.get('proxy').ensureProxy();
 
-    return this._proxyActions.join(this._daiAdapterAddress, this._pot.address,
-                                   amountInDai.toFixed('wei'),
-                                   {dsProxy : true, promise});
+    return this._proxyActions.join(
+      this._daiAdapterAddress,
+      this._pot.address,
+      amountInDai.toFixed('wei'),
+      { dsProxy: true, promise }
+    );
   }
 
   @tracksTransactions
-  async exit(amountInDai, {promise}) {
+  async exit(amountInDai, { promise }) {
     await this.get('proxy').ensureProxy();
 
-    return this._proxyActions.exit(this._daiAdapterAddress, this._pot.address,
-                                   amountInDai.toFixed('wei'),
-                                   {dsProxy : true, promise});
+    return this._proxyActions.exit(
+      this._daiAdapterAddress,
+      this._pot.address,
+      amountInDai.toFixed('wei'),
+      { dsProxy: true, promise }
+    );
   }
 
   @tracksTransactions
-  async exitAll({promise}) {
+  async exitAll({ promise }) {
     await this.get('proxy').ensureProxy();
 
     return this._proxyActions.exitAll(
-        this._daiAdapterAddress, this._pot.address, {dsProxy : true, promise});
+      this._daiAdapterAddress,
+      this._pot.address,
+      { dsProxy: true, promise }
+    );
   }
 
   async balance() {
@@ -63,44 +76,45 @@ export default class SavingsService extends PublicService {
     return dsr.pow(SECONDS_PER_YEAR);
   }
 
-  async chi() { return new BigNumber(await this._pot.chi()).div(RAY); }
+  async chi() {
+    return new BigNumber(await this._pot.chi()).div(RAY);
+  }
 
   get _proxyActions() {
     return this.get('smartContract').getContract('PROXY_ACTIONS_DSR');
   }
 
-  get _pot() { return this.get('smartContract').getContract('MCD_POT'); }
+  get _pot() {
+    return this.get('smartContract').getContract('MCD_POT');
+  }
 
   get _daiAdapterAddress() {
     return this.get(ServiceRoles.SYSTEM_DATA).adapterAddress('DAI');
   }
 
   getEventHistory(address) {
-    if (!this._eventHistoryCache)
-      this._eventHistoryCache = {};
+    if (!this._eventHistoryCache) this._eventHistoryCache = {};
     return getDsrEventHistory(this, address, this._eventHistoryCache);
   }
 
   async getEarningsToDate(address) {
-    if (!this._eventHistoryCache)
-      this._eventHistoryCache = {};
-    const eventHistory =
-        await getDsrEventHistory(this, address, this._eventHistoryCache);
+    if (!this._eventHistoryCache) this._eventHistoryCache = {};
+    const eventHistory = await getDsrEventHistory(
+      this,
+      address,
+      this._eventHistoryCache
+    );
     let sum = new BigNumber(0);
-    eventHistory.forEach(({type, amount}) => {
-      if (type === 'DSR_DEPOSIT')
-        sum = sum.plus(amount);
-      if (type === 'DSR_WITHDRAW')
-        sum = sum.minus(amount);
+    eventHistory.forEach(({ type, amount }) => {
+      if (type === 'DSR_DEPOSIT') sum = sum.plus(amount);
+      if (type === 'DSR_WITHDRAW') sum = sum.minus(amount);
     });
     const balance = await this.balanceOf(address);
     return balance.gt(sum) ? balance.minus(sum) : MDAI(0);
   }
 
   resetEventHistoryCache(address = null) {
-    if (address !== null)
-      delete this._eventHistoryCache[address];
-    else
-      this._eventHistoryCache = {};
+    if (address !== null) delete this._eventHistoryCache[address];
+    else this._eventHistoryCache = {};
   }
 }
